@@ -127,13 +127,16 @@ class TaskManager {
         return task;
     }
 
-    addSubtask(taskId, subtaskText, notes = '') {
+    addSubtask(taskId, subtaskText, notes = '', priority = 'Normal') {
         const task = this.tasks.find(t => t.id === taskId);
         if (task && subtaskText.trim()) {
+            const weightMap = { 'Normal': 3, 'Important': 5, 'Urgent': 8 };
             const subtask = {
                 id: Date.now(),
                 text: String(subtaskText).substring(0, 200),
                 notes: String(notes).substring(0, 300),
+                priority: priority,
+                weight: weightMap[priority] || 3,
                 completed: false
             };
             task.subtasks.push(subtask);
@@ -148,6 +151,16 @@ class TaskManager {
             const subtask = task.subtasks.find(s => s.id === subtaskId);
             if (subtask) {
                 subtask.completed = !subtask.completed;
+                
+                // Auto-complete main task if all subtasks are completed
+                if (task.subtasks.length > 0 && task.subtasks.every(s => s.completed)) {
+                    task.completed = true;
+                }
+                // Uncheck main task if any subtask is unchecked
+                else if (!subtask.completed && task.completed) {
+                    task.completed = false;
+                }
+                
                 return true;
             }
         }
@@ -473,6 +486,12 @@ class TaskRenderer {
                     subtaskNotes.textContent = subtask.notes;
                     subtaskContent.appendChild(subtaskNotes);
                 }
+                if (subtask.priority && subtask.priority !== 'Normal') {
+                    const subtaskPriority = document.createElement('span');
+                    subtaskPriority.className = `subtask-priority priority-${subtask.priority.toLowerCase()}`;
+                    subtaskPriority.textContent = subtask.priority;
+                    subtaskContent.appendChild(subtaskPriority);
+                }
                 
                 subtaskDiv.appendChild(subtaskCheckbox);
                 subtaskDiv.appendChild(subtaskContent);
@@ -506,8 +525,9 @@ class TaskRenderer {
         if (!task.subtasks || task.subtasks.length === 0) {
             return task.completed ? 100 : 0;
         }
-        const completed = task.subtasks.filter(s => s.completed).length;
-        return Math.round((completed / task.subtasks.length) * 100);
+        const totalWeight = task.subtasks.reduce((sum, s) => sum + (s.weight || 3), 0);
+        const completedWeight = task.subtasks.filter(s => s.completed).reduce((sum, s) => sum + (s.weight || 3), 0);
+        return Math.round((completedWeight / totalWeight) * 100);
     }
 
     showSubtaskDialog(taskId, onAddSubtask) {
@@ -531,6 +551,16 @@ class TaskRenderer {
         notesInput.placeholder = 'Notes (optional)';
         notesInput.maxLength = 300;
         
+        const prioritySelect = document.createElement('select');
+        prioritySelect.id = 'subtask-priority';
+        const priorities = ['Normal', 'Important', 'Urgent'];
+        priorities.forEach(priority => {
+            const option = document.createElement('option');
+            option.value = priority;
+            option.textContent = priority;
+            prioritySelect.appendChild(option);
+        });
+        
         const buttonDiv = document.createElement('div');
         buttonDiv.className = 'dialog-buttons';
         
@@ -547,6 +577,7 @@ class TaskRenderer {
         dialogContent.appendChild(title);
         dialogContent.appendChild(textInput);
         dialogContent.appendChild(notesInput);
+        dialogContent.appendChild(prioritySelect);
         dialogContent.appendChild(buttonDiv);
         dialog.appendChild(dialogContent);
         
@@ -565,7 +596,7 @@ class TaskRenderer {
         addBtn.addEventListener('click', () => {
             const text = textInput.value.trim();
             if (text) {
-                onAddSubtask(taskId, text, notesInput.value.trim());
+                onAddSubtask(taskId, text, notesInput.value.trim(), prioritySelect.value);
                 closeDialog();
             }
         });
@@ -718,14 +749,14 @@ class TodoApp {
             this.taskManager.getTasks(),
             (id) => this.toggleTask(id),
             (id) => this.deleteTask(id),
-            (taskId, subtaskText, notes) => this.addSubtask(taskId, subtaskText, notes),
+            (taskId, subtaskText, notes, weight) => this.addSubtask(taskId, subtaskText, notes, weight),
             (taskId, subtaskId) => this.toggleSubtask(taskId, subtaskId),
             (taskId, subtaskId) => this.deleteSubtask(taskId, subtaskId)
         );
     }
 
-    addSubtask(taskId, subtaskText, notes = '') {
-        if (this.taskManager.addSubtask(taskId, subtaskText, notes)) {
+    addSubtask(taskId, subtaskText, notes = '', weight = 1) {
+        if (this.taskManager.addSubtask(taskId, subtaskText, notes, weight)) {
             this.storage.saveTasks(this.taskManager.getTasks());
             this.renderTasks();
         }
