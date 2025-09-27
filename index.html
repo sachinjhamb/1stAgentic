@@ -1,0 +1,39 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple To-Do App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>My To-Do List</h1>
+        </header>
+        
+        <div class="add-task">
+            <form id="task-form">
+                <div class="form-row">
+                    <input type="text" id="task-input" placeholder="Add a new task..." required>
+                    <input type="date" id="task-date" title="Due Date">
+                    <input type="time" id="task-time" title="Due Time">
+                    <button type="submit">Add Task</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="task-list">
+            <ul id="task-list">
+                <!-- Tasks will be dynamically added here -->
+            </ul>
+        </div>
+        
+        <div class="stats">
+            <span id="task-count">0 tasks</span>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
