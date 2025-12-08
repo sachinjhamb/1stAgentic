@@ -1,0 +1,12 @@
+{
+  "name": "todo-app-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for Todo app with Google OAuth",
+  "main": "app.js",
+  "scripts": {
+    "test": "cd .. && node node_modules/jest/bin/jest.js frontend"
+  },
+  "keywords": ["todo", "frontend"],
+  "author": "",
+  "license": "MIT"
+}

@@ -12,7 +12,12 @@
   - Update .gitignore for node_modules and .env files
   - _Requirements: 7.3, 7.4_
 
-- [ ] 2. Set up Google OAuth credentials
+- [x] 2. Set up Google OAuth credentials
+
+
+
+
+
   - Create Google Cloud Console project
   - Configure OAuth consent screen
   - Create OAuth 2.0 Client ID for web application
@@ -21,76 +26,114 @@
   - Document client ID setup in README
   - _Requirements: 1.2_
 
-- [ ] 3. Implement local backend server
-  - [ ] 3.1 Create Express.js server with CORS support
+- [x] 3. Implement local backend server
+
+
+
+
+
+  - [x] 3.1 Create Express.js server with CORS support
+
+
     - Set up Express app with JSON middleware
     - Configure CORS for localhost frontend
     - Add health check endpoint
     - _Requirements: 7.1_
 
-  - [ ] 3.2 Implement token verification middleware
+  - [x] 3.2 Implement token verification middleware
+
     - Add google-auth-library dependency
     - Create verifyToken middleware function
     - Extract userId from verified token
     - Handle invalid/expired tokens with 401 response
     - _Requirements: 3.1, 3.4_
 
-  - [ ] 3.3 Write property test for token verification
+  - [x] 3.3 Write property test for token verification
+
+
     - **Property 7: Token validation on all requests**
     - **Validates: Requirements 3.1**
 
-  - [ ] 3.4 Implement in-memory storage with user isolation
+  - [x] 3.4 Implement in-memory storage with user isolation
+
     - Create Map-based storage keyed by userId:taskId
     - Implement helper functions for CRUD operations
     - Ensure user data isolation in all operations
     - _Requirements: 7.2, 3.2, 3.3_
 
-  - [ ] 3.5 Write property test for user data isolation
+  - [x] 3.5 Write property test for user data isolation
+
+
     - **Property 8: User data isolation**
     - **Validates: Requirements 3.2, 3.3**
 
-  - [ ] 3.6 Write property test for local storage behavior
+  - [x] 3.6 Write property test for local storage behavior
+
+
     - **Property 16: Local storage mimics DynamoDB behavior**
     - **Validates: Requirements 7.2**
 
-  - [ ] 3.7 Implement GET /tasks endpoint
+  - [x] 3.7 Implement GET /tasks endpoint
+
     - Filter tasks by authenticated userId
     - Return tasks array in response
     - _Requirements: 2.4, 3.2_
 
-  - [ ] 3.8 Implement POST /tasks endpoint
+  - [x] 3.8 Implement POST /tasks endpoint
+
     - Validate task data
     - Associate task with authenticated userId
     - Store task in memory
     - Return created task
     - _Requirements: 2.1, 3.3_
 
-  - [ ] 3.9 Implement PUT /tasks/:taskId endpoint
+  - [x] 3.9 Implement PUT /tasks/:taskId endpoint
+
     - Verify task belongs to authenticated user
     - Update task with provided data
     - Return updated task
     - _Requirements: 2.2_
 
-  - [ ] 3.10 Implement DELETE /tasks/:taskId endpoint
+  - [x] 3.10 Implement DELETE /tasks/:taskId endpoint
+
     - Verify task belongs to authenticated user
     - Remove task from storage
     - Return success response
     - _Requirements: 2.3_
 
-  - [ ] 3.11 Implement POST /tasks/sync endpoint
+  - [x] 3.11 Implement POST /tasks/sync endpoint
+
     - Process batch operations (CREATE, UPDATE, DELETE)
     - Return results for each operation
     - _Requirements: 2.5_
 
-  - [ ] 3.12 Write property test for API endpoint parity
+  - [x] 3.12 Write property test for API endpoint parity
+
+
     - **Property 15: Local and cloud API endpoint parity**
     - **Validates: Requirements 7.1**
 
-- [ ] 4. Checkpoint - Test local backend server
+- [x] 4. Checkpoint - Test local backend server
+
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement frontend authentication (AuthManager)
-  - [ ] 5.1 Create auth-manager.js with AuthManager class
+- [x] 5. Implement frontend authentication (AuthManager)
+
+
+
+
+
+
+
+
+
+  - [x] 5.1 Create auth-manager.js with AuthManager class
+
+
     - Add Google OAuth library script loading
     - Implement initialize() method
     - Implement signIn() method with Google OAuth flow
@@ -101,15 +144,32 @@
     - Add auth state change listeners
     - _Requirements: 1.2, 1.3, 1.5_
 
-  - [ ] 5.2 Write property test for token storage
+  - [x] 5.2 Write property test for token storage
+
+
     - **Property 1: Token storage on successful authentication**
     - **Validates: Requirements 1.3**
 
-  - [ ] 5.3 Write property test for session cleanup
+
+  - [x] 5.3 Write property test for session cleanup
+
+
+
+
+
+
+
+
+
     - **Property 3: Session cleanup on sign out**
     - **Validates: Requirements 1.5**
 
-  - [ ] 5.4 Write unit tests for AuthManager
+
+
+  - [x] 5.4 Write unit tests for AuthManager
+
+
+
     - Test initialization
     - Test sign-in flow
     - Test sign-out flow

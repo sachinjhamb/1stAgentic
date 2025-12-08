@@ -40,3 +40,10 @@ yarn-error.log*
 tmp/
 temp/
 *.tmp
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Jest cache
+.jest/
