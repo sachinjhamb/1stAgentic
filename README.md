@@ -237,9 +237,13 @@ You can easily customize the app by modifying:
 
 ## Testing
 
-This project includes comprehensive unit tests and property-based tests. See [TESTING.md](TESTING.md) for detailed testing instructions.
+This project includes comprehensive unit tests, property-based tests, and manual integration tests.
 
-### Quick Test Commands
+### Automated Tests
+
+See [TESTING.md](TESTING.md) for detailed automated testing instructions.
+
+**Quick Test Commands:**
 
 Run all tests:
 ```cmd
@@ -264,6 +268,23 @@ test-backend.cmd      # Backend only
 ```
 
 **Note**: These commands work on Windows without PowerShell execution policy issues.
+
+### Manual Integration Testing
+
+For comprehensive manual testing of the Google OAuth flow, cloud sync, and user isolation:
+
+- **[LOCAL-TESTING-GUIDE.md](LOCAL-TESTING-GUIDE.md)** - Complete step-by-step testing guide (~60 min)
+- **[TESTING-CHECKLIST.md](TESTING-CHECKLIST.md)** - Quick validation checklist (~40 min)
+
+These guides cover:
+- Google OAuth authentication flow
+- Task CRUD operations with cloud sync
+- User data isolation (security testing)
+- Offline/online scenarios with auto-sync
+- Migration from localStorage to cloud
+- Sync status indicators
+
+**Important**: Complete manual testing before deploying to AWS.
 
 ## Deployment to AWS
 

@@ -271,7 +271,7 @@
     - Test conflict resolution
     - _Requirements: 2.5_
 
-- [ ] 8. Update StorageManager for hybrid mode
+- [x] 8. Update StorageManager for hybrid mode
   - [x] 8.1 Modify StorageManager class
 
 
@@ -333,7 +333,7 @@
     - Test sync status rendering
     - _Requirements: 1.1, 1.4, 5.2, 6.1, 6.2, 6.3_
 
-- [ ] 10. Implement migration logic
+- [x] 10. Implement migration logic
   - [x] 10.1 Add migration methods to SyncManager
 
 
@@ -447,15 +447,27 @@
     - Provide example values
     - _Requirements: 7.4_
 
-- [ ] 13. Update HTML and CSS
-  - [ ] 13.1 Update index.html
+- [x] 13. Update HTML and CSS
+
+
+
+  - [x] 13.1 Update index.html
+
+
+
+
     - Add Google OAuth library script
     - Add new script tags for auth-manager, api-client, sync-manager, auth-ui
     - Add auth UI container elements
     - Add sync status indicator element
     - _Requirements: 1.1, 1.4, 6.1_
 
-  - [ ] 13.2 Update styles.css
+
+  - [x] 13.2 Update styles.css
+
+
+
+
     - Add styles for sign-in screen
     - Add styles for user profile display
     - Add styles for migration prompt dialog
@@ -463,38 +475,56 @@
     - Ensure mobile responsiveness for new UI elements
     - _Requirements: 1.1, 1.4, 5.2, 6.1, 6.2, 6.3_
 
-- [ ] 14. Checkpoint - Test complete local implementation
+- [x] 14. Checkpoint - Test complete local implementation
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 15. Create backend package.json and dependencies
-  - [ ] 15.1 Initialize backend package.json
+- [x] 15. Create backend package.json and dependencies
+
+
+
+
+  - [x] 15.1 Initialize backend package.json
+
     - Add express dependency
     - Add cors dependency
     - Add google-auth-library dependency
     - Add start script for local-server.js
     - _Requirements: 7.1_
 
-  - [ ] 15.2 Create backend README.md
+  - [x] 15.2 Create backend README.md
+
     - Document local server setup
     - Document environment variables
     - Document API endpoints
     - _Requirements: 7.1_
 
-- [ ] 16. Local testing and validation
-  - [ ] 16.1 Test Google OAuth flow locally
+- [x] 16. Local testing and validation
+
+
+
+
+
+  - [x] 16.1 Test Google OAuth flow locally
+
     - Verify sign-in works with Google account
     - Verify token is stored correctly
     - Verify sign-out clears session
     - _Requirements: 1.2, 1.3, 1.5_
 
-  - [ ] 16.2 Test task CRUD operations locally
+  - [x] 16.2 Test task CRUD operations locally
+
     - Create tasks and verify they appear
     - Update tasks and verify changes persist
     - Delete tasks and verify removal
     - Test subtask operations
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 16.3 Test user data isolation locally
+  - [x] 16.3 Test user data isolation locally
+
     - Sign in with first Google account, create tasks
     - Sign out and sign in with second Google account
     - Verify second user sees no tasks from first user
@@ -503,7 +533,8 @@
     - Verify first user's tasks are still there
     - _Requirements: 3.2, 3.3_
 
-  - [ ] 16.4 Test offline/online scenarios
+  - [x] 16.4 Test offline/online scenarios
+
     - Create tasks while online
     - Stop local backend server
     - Attempt to create/update tasks (should queue)
@@ -511,7 +542,8 @@
     - Verify queued operations sync automatically
     - _Requirements: 2.5, 6.5_
 
-  - [ ] 16.5 Test migration flow
+  - [x] 16.5 Test migration flow
+
     - Create tasks in localStorage (without auth)
     - Sign in with Google account
     - Verify migration prompt appears
@@ -520,141 +552,164 @@
     - Verify localStorage is cleared
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [ ] 16.6 Test sync status indicators
+  - [x] 16.6 Test sync status indicators
+
     - Verify syncing indicator during operations
     - Verify success indicator on completion
     - Verify error indicator on failure
     - Verify offline indicator when backend is down
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 17. Checkpoint - Complete local testing validation
+- [x] 17. Checkpoint - Complete local testing validation
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 18. Create AWS Lambda functions
-  - [ ] 18.1 Create lambda/getTasks.js
+- [x] 18. Create AWS Lambda functions
+
+
+
+
+
+  - [x] 18.1 Create lambda/getTasks.js
+
+
     - Implement token verification
     - Query DynamoDB for user's tasks
     - Return tasks array
     - _Requirements: 2.4, 3.1, 3.2_
 
-  - [ ] 18.2 Create lambda/createTask.js
+
+
+  - [x] 18.2 Create lambda/createTask.js
     - Implement token verification
     - Validate task data
     - Store task in DynamoDB with userId
     - Return created task
     - _Requirements: 2.1, 3.1, 3.3_
 
-  - [ ] 18.3 Create lambda/updateTask.js
+  - [x] 18.3 Create lambda/updateTask.js
     - Implement token verification
     - Verify task ownership
     - Update task in DynamoDB
     - Return updated task
     - _Requirements: 2.2, 3.1_
 
-  - [ ] 18.4 Create lambda/deleteTask.js
+  - [x] 18.4 Create lambda/deleteTask.js
     - Implement token verification
     - Verify task ownership
     - Delete task from DynamoDB
     - Return success response
     - _Requirements: 2.3, 3.1_
 
-  - [ ] 18.5 Create lambda/syncTasks.js
+  - [x] 18.5 Create lambda/syncTasks.js
     - Implement token verification
     - Process batch operations
     - Return results for each operation
     - _Requirements: 2.5, 3.1_
 
-  - [ ] 18.6 Create lambda/utils/tokenVerifier.js
+  - [x] 18.6 Create lambda/utils/tokenVerifier.js
+
+
     - Implement verifyGoogleToken() function
     - Extract userId from token payload
     - Handle verification errors
+
+
     - _Requirements: 3.1, 3.4_
 
-  - [ ] 18.7 Create lambda/utils/dynamodb.js
+  - [x] 18.7 Create lambda/utils/dynamodb.js
+
+
     - Create DynamoDB client
     - Implement helper functions for CRUD operations
     - _Requirements: 4.5_
 
-  - [ ] 18.8 Write unit tests for Lambda functions
+  - [x] 18.8 Write unit tests for Lambda functions
     - Test token verification
     - Test DynamoDB operations
     - Test error handling
     - _Requirements: 3.1, 3.4_
 
-- [ ] 19. Create AWS infrastructure template
-  - [ ] 19.1 Create infrastructure/cloudformation.yaml
-    - Define S3 bucket for frontend
-    - Define CloudFront distribution
-    - Define DynamoDB table
-    - Define API Gateway REST API
-    - Define Lambda functions
-    - Define IAM roles and policies
-    - Define CloudWatch log groups
-    - Add parameters for environment and Google Client ID
-    - Add outputs for URLs and resource names
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 8.1, 8.2, 8.3_
+- [x] 19. Create AWS infrastructure as code
 
-  - [ ] 19.2 Create infrastructure/deploy.sh
-    - Package Lambda functions
-    - Deploy CloudFormation stack
-    - Upload Lambda code
-    - Sync frontend to S3
-    - Invalidate CloudFront cache
+
+
+
+
+
+
+  - [ ] 19.1 Create infrastructure/cloudformation.yaml
+    - Define S3 bucket for frontend hosting
+    - Define CloudFront distribution with SSL/TLS
+    - Define DynamoDB table (TodoTasks with userId/taskId keys)
+    - Define API Gateway REST API with CORS
+    - Define Lambda function resources (getTasks, createTask, updateTask, deleteTask, syncTasks)
+    - Define IAM roles and policies for Lambda execution
+    - Define CloudWatch log groups for monitoring
+    - Add parameters for environment and Google Client ID
+    - Add outputs for CloudFront URL, API Gateway URL, and DynamoDB table name
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 8.1, 8.2_
+
+
+
+  - [ ] 19.2 Create infrastructure/deploy.sh deployment script
+    - Package Lambda functions into deployment zip
+    - Validate CloudFormation template
+    - Deploy CloudFormation stack with parameters
+    - Upload Lambda function code to AWS
+    - Sync frontend files to S3 bucket
+    - Invalidate CloudFront cache for immediate updates
+
+
+    - Display deployment outputs (URLs and resource names)
     - _Requirements: 8.5_
 
   - [ ] 19.3 Create infrastructure/README.md
-    - Document prerequisites
-    - Document deployment steps
-    - Document environment variables
+    - Document AWS prerequisites (AWS CLI, credentials, permissions)
+    - Document deployment steps with examples
+    - Document required environment variables
+    - Document how to update existing deployments
     - Document rollback procedures
+    - Document cost estimates and resource cleanup
     - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 20. Deploy to AWS and test
-  - [ ] 20.1 Deploy infrastructure to AWS
-    - Run CloudFormation deployment
-    - Verify all resources created successfully
-    - Note API Gateway URL and CloudFront URL
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+- [ ] 20. AWS deployment preparation
+  - [ ] 20.1 Create deployment package structure
+    - Create infrastructure/ directory
+    - Prepare Lambda function deployment package
+    - Create deployment configuration files
+    - _Requirements: 8.1, 8.5_
 
-  - [ ] 20.2 Update frontend config for AWS
-    - Update config.js with production API URL
-    - Update Google OAuth redirect URIs in console
+  - [ ] 20.2 Update frontend config for production
+    - Add production environment configuration to config.js
+    - Document how to set API Gateway URL after deployment
+    - Add instructions for updating Google OAuth redirect URIs
     - _Requirements: 7.4_
 
-  - [ ] 20.3 Deploy frontend to S3
-    - Sync files to S3 bucket
-    - Invalidate CloudFront cache
-    - _Requirements: 4.1_
+  - [ ] 20.3 Create deployment validation checklist
+    - Document pre-deployment checks
+    - Document post-deployment validation steps
+    - Document testing procedures for AWS environment
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-  - [ ] 20.4 Test AWS deployment
-    - Access app via CloudFront URL
-    - Test Google OAuth sign-in
-    - Test task CRUD operations
-    - Test user data isolation
-    - Test offline/online scenarios
-    - _Requirements: 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 3.2, 3.3_
-
-  - [ ] 20.5 Monitor CloudWatch logs
-    - Check Lambda function logs
-    - Check API Gateway logs
-    - Verify no errors
-    - _Requirements: 4.3, 4.4_
-
-- [ ] 21. Update documentation
-  - [ ] 21.1 Update main README.md
-    - Add Google OAuth setup instructions
-    - Add local development instructions
-    - Add AWS deployment instructions
-    - Update feature list
-    - Update architecture description
+- [ ] 21. Update documentation for AWS deployment
+  - [ ] 21.1 Update main README.md with AWS deployment section
+    - Add AWS deployment overview
+    - Link to infrastructure/README.md for detailed steps
+    - Add production environment setup instructions
+    - Update architecture diagram to show AWS services
     - _Requirements: 1.1, 7.1, 8.1_
 
-  - [ ] 21.2 Create deployment guide
-    - Document Google Cloud Console setup
-    - Document AWS account setup
-    - Document environment configuration
-    - Document troubleshooting steps
+  - [ ] 21.2 Create AWS deployment guide
+    - Document complete AWS setup process
+    - Document Google OAuth configuration for production domain
+    - Document environment-specific configuration
+    - Document monitoring and troubleshooting for AWS
+    - Document cost optimization tips
     - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 22. Final checkpoint - Complete implementation
+- [ ] 22. Final checkpoint - Implementation complete
   - Ensure all tests pass, ask the user if questions arise.

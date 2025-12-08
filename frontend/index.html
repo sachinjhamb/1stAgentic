@@ -5,11 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple To-Do App</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Google OAuth Library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+    <!-- Auth UI Container -->
+    <div id="auth-container"></div>
+    
     <div class="container">
         <header>
             <h1>My To-Do List</h1>
+            <!-- User Profile Display -->
+            <div id="user-profile"></div>
+            <!-- Sync Status Indicator -->
+            <div id="sync-status" class="sync-status"></div>
         </header>
         
         <div class="add-task">
@@ -34,6 +43,15 @@
         </div>
     </div>
     
+    <!-- Migration Prompt Container -->
+    <div id="migration-prompt"></div>
+    
+    <!-- Load scripts in dependency order -->
+    <script src="config.js"></script>
+    <script src="auth-manager.js"></script>
+    <script src="api-client.js"></script>
+    <script src="sync-manager.js"></script>
+    <script src="auth-ui.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
