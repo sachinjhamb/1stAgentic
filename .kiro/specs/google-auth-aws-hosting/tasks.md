@@ -176,8 +176,14 @@
     - Test token retrieval
     - _Requirements: 1.2, 1.3, 1.5_
 
-- [ ] 6. Implement API client (ApiClient)
-  - [ ] 6.1 Create api-client.js with ApiClient class
+- [x] 6. Implement API client (ApiClient)
+
+
+
+
+  - [x] 6.1 Create api-client.js with ApiClient class
+
+
     - Implement constructor with baseUrl and authManager
     - Implement generic request() method with Authorization header
     - Implement getTasks() method
@@ -188,22 +194,30 @@
     - Add error handling and retry logic
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.5_
 
-  - [ ] 6.2 Write property test for HTTPS usage
+
+  - [x] 6.2 Write property test for HTTPS usage
+
     - **Property 10: HTTPS for all communications**
     - **Validates: Requirements 3.5**
 
-  - [ ] 6.3 Write property test for invalid token rejection
+  - [x] 6.3 Write property test for invalid token rejection
+
     - **Property 9: Invalid token rejection**
     - **Validates: Requirements 3.4**
 
-  - [ ] 6.4 Write unit tests for ApiClient
+  - [x] 6.4 Write unit tests for ApiClient
+
     - Test request formatting
     - Test error handling
     - Test retry logic
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 7. Implement sync manager (SyncManager)
-  - [ ] 7.1 Create sync-manager.js with SyncManager class
+- [-] 7. Implement sync manager (SyncManager)
+
+
+  - [x] 7.1 Create sync-manager.js with SyncManager class
+
+
     - Implement constructor with apiClient and taskManager
     - Implement syncToCloud() for single operations
     - Implement syncFromCloud() to load all tasks
@@ -213,7 +227,16 @@
     - Add sync status tracking and callbacks
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
+
   - [ ] 7.2 Write property test for task operations sync
+
+
+
+
+
+
+
+
     - **Property 4: Task operations sync to cloud**
     - **Validates: Requirements 2.1, 2.2, 2.3**
 
@@ -236,7 +259,12 @@
     - _Requirements: 2.5_
 
 - [ ] 8. Update StorageManager for hybrid mode
-  - [ ] 8.1 Modify StorageManager class
+  - [x] 8.1 Modify StorageManager class
+
+
+
+
+
     - Add mode parameter (local/cloud/hybrid)
     - Implement queueOperation() method
     - Implement getQueuedOperations() method
@@ -252,7 +280,12 @@
     - _Requirements: 2.5, 5.1_
 
 - [ ] 9. Implement authentication UI (AuthUI)
-  - [ ] 9.1 Create auth-ui.js with AuthUI class
+  - [x] 9.1 Create auth-ui.js with AuthUI class
+
+
+
+
+
     - Implement renderSignInScreen() method
     - Implement renderUserProfile() method
     - Implement renderMigrationPrompt() method

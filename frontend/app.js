@@ -1,7 +1,9 @@
 // Storage Manager
 class StorageManager {
-    constructor(storageKey = 'todoApp_tasks') {
+    constructor(storageKey = 'todoApp_tasks', mode = 'local') {
         this.storageKey = storageKey;
+        this.mode = mode; // 'local' | 'cloud' | 'hybrid'
+        this.queueKey = `${storageKey}_queue`;
     }
 
     loadTasks() {
@@ -19,6 +21,57 @@ class StorageManager {
             localStorage.setItem(this.storageKey, JSON.stringify(tasks));
         } catch (error) {
             console.error('Error saving tasks to localStorage:', error);
+        }
+    }
+
+    queueOperation(operation) {
+        try {
+            const queue = this.getQueuedOperations();
+            queue.push({
+                ...operation,
+                timestamp: new Date().toISOString()
+            });
+            localStorage.setItem(this.queueKey, JSON.stringify(queue));
+        } catch (error) {
+            console.error('Error queueing operation:', error);
+        }
+    }
+
+    getQueuedOperations() {
+        try {
+            const saved = localStorage.getItem(this.queueKey);
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Error loading queued operations:', error);
+            return [];
+        }
+    }
+
+    clearQueue() {
+        try {
+            localStorage.removeItem(this.queueKey);
+        } catch (error) {
+            console.error('Error clearing queue:', error);
+        }
+    }
+
+    hasLocalTasks() {
+        try {
+            const saved = localStorage.getItem(this.storageKey);
+            if (!saved) return false;
+            const tasks = JSON.parse(saved);
+            return Array.isArray(tasks) && tasks.length > 0;
+        } catch (error) {
+            console.error('Error checking for local tasks:', error);
+            return false;
+        }
+    }
+
+    clearLocalTasks() {
+        try {
+            localStorage.removeItem(this.storageKey);
+        } catch (error) {
+            console.error('Error clearing local tasks:', error);
         }
     }
 }
