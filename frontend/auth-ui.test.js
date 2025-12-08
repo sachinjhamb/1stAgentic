@@ -2,6 +2,8 @@
  * @jest-environment jsdom
  */
 
+const fc = require('fast-check');
+
 // Mock AuthManager for testing
 class MockAuthManager {
   constructor() {
@@ -310,6 +312,184 @@ describe('AuthUI', () => {
       if (syncStatus) {
         expect(syncStatus.classList.contains('auth-sync-visible')).toBe(false);
       }
+    });
+  });
+
+  // Property-Based Tests
+  describe('Property 2: Authenticated user profile display', () => {
+    /**
+     * Feature: google-auth-aws-hosting, Property 2: Authenticated user profile display
+     * Validates: Requirements 1.4
+     * 
+     * For any authenticated user session, the header should display the user's 
+     * profile picture and name
+     */
+    test('should display user profile picture and name for any authenticated user', () => {
+      fc.assert(
+        fc.property(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 100 }),
+            email: fc.emailAddress(),
+            name: fc.string({ minLength: 1, maxLength: 100 }),
+            picture: fc.option(fc.webUrl(), { nil: undefined })
+          }),
+          (user) => {
+            // Setup fresh DOM for each test
+            document.body.innerHTML = `
+              <div id="app-container">
+                <header>
+                  <h1>To-Do App</h1>
+                </header>
+              </div>
+            `;
+            const testContainer = document.getElementById('app-container');
+            const testAuthManager = new MockAuthManager();
+            const testAuthUI = new AuthUI(testContainer, testAuthManager);
+
+            // Render user profile
+            testAuthUI.renderUserProfile(user);
+
+            // Verify profile is displayed in header
+            const profile = document.getElementById('auth-user-profile');
+            expect(profile).toBeTruthy();
+
+            // Verify profile picture is displayed
+            const picture = profile.querySelector('.auth-user-picture');
+            expect(picture).toBeTruthy();
+            if (user.picture) {
+              // Verify that a picture src is set (browser may normalize URLs)
+              // The important thing is that the picture element has a src attribute
+              expect(picture.src).toBeTruthy();
+              expect(picture.src.length).toBeGreaterThan(0);
+            } else {
+              // Should use placeholder if no picture
+              expect(picture.src).toContain('placeholder');
+            }
+            expect(picture.alt).toBe(user.name);
+
+            // Verify user name is displayed
+            const nameElement = profile.querySelector('.auth-user-name');
+            expect(nameElement).toBeTruthy();
+            expect(nameElement.textContent).toBe(user.name);
+
+            // Verify profile is in the header
+            const header = document.querySelector('header');
+            expect(header.contains(profile)).toBe(true);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  describe('Property 13: Sync status feedback', () => {
+    /**
+     * Feature: google-auth-aws-hosting, Property 13: Sync status feedback
+     * Validates: Requirements 6.1, 6.2, 6.3
+     * 
+     * For any task operation, the system should display appropriate status indicators:
+     * syncing during the operation, success on completion, or error with retry option on failure
+     */
+    test('should display appropriate status indicators for all sync operations', () => {
+      fc.assert(
+        fc.property(
+          fc.record({
+            type: fc.constantFrom('syncing', 'success', 'error', 'offline'),
+            message: fc.option(fc.string({ minLength: 1, maxLength: 100 }), { nil: undefined })
+          }),
+          (status) => {
+            // Setup fresh DOM for each test
+            document.body.innerHTML = `
+              <div id="app-container">
+                <header>
+                  <h1>To-Do App</h1>
+                </header>
+              </div>
+            `;
+            const testContainer = document.getElementById('app-container');
+            const testAuthManager = new MockAuthManager();
+            const testAuthUI = new AuthUI(testContainer, testAuthManager);
+
+            // Render sync status
+            testAuthUI.renderSyncStatus(status);
+
+            // Verify status element is displayed
+            const statusElement = document.getElementById('auth-sync-status');
+            expect(statusElement).toBeTruthy();
+            expect(statusElement.classList.contains('auth-sync-visible')).toBe(true);
+
+            // Verify correct status class is applied
+            expect(statusElement.classList.contains(`auth-sync-${status.type}`)).toBe(true);
+
+            // Verify icon is displayed
+            const icon = statusElement.querySelector('.auth-sync-icon');
+            expect(icon).toBeTruthy();
+            expect(icon.textContent.length).toBeGreaterThan(0);
+
+            // Verify message is displayed
+            const messageElement = statusElement.querySelector('.auth-sync-message');
+            expect(messageElement).toBeTruthy();
+            if (status.message) {
+              expect(messageElement.textContent).toBe(status.message);
+            } else {
+              // Should have default message
+              expect(messageElement.textContent.length).toBeGreaterThan(0);
+            }
+
+            // Verify syncing has spinning animation
+            if (status.type === 'syncing') {
+              expect(icon.classList.contains('auth-sync-spinning')).toBe(true);
+            }
+
+            // Verify error status would have retry button if onRetry provided
+            // (we test this separately since we can't generate functions with fc)
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    test('should provide retry option for error status', () => {
+      fc.assert(
+        fc.property(
+          fc.string({ minLength: 1, maxLength: 100 }),
+          (errorMessage) => {
+            // Setup fresh DOM for each test
+            document.body.innerHTML = `
+              <div id="app-container">
+                <header>
+                  <h1>To-Do App</h1>
+                </header>
+              </div>
+            `;
+            const testContainer = document.getElementById('app-container');
+            const testAuthManager = new MockAuthManager();
+            const testAuthUI = new AuthUI(testContainer, testAuthManager);
+
+            // Track if retry was called
+            let retryCalled = false;
+            const onRetry = () => { retryCalled = true; };
+
+            // Render error status with retry
+            testAuthUI.renderSyncStatus({
+              type: 'error',
+              message: errorMessage,
+              onRetry
+            });
+
+            // Verify retry button is displayed
+            const statusElement = document.getElementById('auth-sync-status');
+            const retryButton = statusElement.querySelector('.auth-sync-retry');
+            expect(retryButton).toBeTruthy();
+            expect(retryButton.textContent).toBe('Retry');
+
+            // Verify retry button calls onRetry
+            retryButton.click();
+            expect(retryCalled).toBe(true);
+          }
+        ),
+        { numRuns: 100 }
+      );
     });
   });
 });

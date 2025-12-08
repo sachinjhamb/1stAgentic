@@ -212,7 +212,11 @@
     - Test retry logic
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [-] 7. Implement sync manager (SyncManager)
+- [x] 7. Implement sync manager (SyncManager)
+
+
+
+
 
 
   - [x] 7.1 Create sync-manager.js with SyncManager class
@@ -228,7 +232,9 @@
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
 
-  - [ ] 7.2 Write property test for task operations sync
+
+  - [x] 7.2 Write property test for task operations sync
+
 
 
 
@@ -240,19 +246,26 @@
     - **Property 4: Task operations sync to cloud**
     - **Validates: Requirements 2.1, 2.2, 2.3**
 
-  - [ ] 7.3 Write property test for task loading
+
+  - [x] 7.3 Write property test for task loading
+
     - **Property 5: Task loading on sign-in**
+
     - **Validates: Requirements 2.4**
 
-  - [ ] 7.4 Write property test for offline queueing
+  - [x] 7.4 Write property test for offline queueing
+
     - **Property 6: Offline operation queueing**
     - **Validates: Requirements 2.5**
 
-  - [ ] 7.5 Write property test for automatic reconnection sync
+
+  - [x] 7.5 Write property test for automatic reconnection sync
+
     - **Property 14: Automatic sync on reconnection**
     - **Validates: Requirements 6.5**
 
-  - [ ] 7.6 Write unit tests for SyncManager
+  - [x] 7.6 Write unit tests for SyncManager
+
     - Test queue management
     - Test sync operations
     - Test conflict resolution
@@ -273,13 +286,21 @@
     - Implement clearLocalTasks() method
     - _Requirements: 2.5, 5.1_
 
-  - [ ] 8.2 Write unit tests for updated StorageManager
+  - [x] 8.2 Write unit tests for updated StorageManager
+
+
+
+
     - Test queue operations
     - Test local task detection
     - Test localStorage clearing
     - _Requirements: 2.5, 5.1_
 
-- [ ] 9. Implement authentication UI (AuthUI)
+- [x] 9. Implement authentication UI (AuthUI)
+
+
+
+
   - [x] 9.1 Create auth-ui.js with AuthUI class
 
 
@@ -293,15 +314,19 @@
     - Add CSS styles for auth UI components
     - _Requirements: 1.1, 1.4, 5.2, 6.1, 6.2, 6.3_
 
-  - [ ] 9.2 Write property test for authenticated user profile display
+  - [x] 9.2 Write property test for authenticated user profile display
+
+
     - **Property 2: Authenticated user profile display**
     - **Validates: Requirements 1.4**
 
-  - [ ] 9.3 Write property test for sync status feedback
+  - [x] 9.3 Write property test for sync status feedback
+
     - **Property 13: Sync status feedback**
     - **Validates: Requirements 6.1, 6.2, 6.3**
 
-  - [ ] 9.4 Write unit tests for AuthUI
+  - [x] 9.4 Write unit tests for AuthUI
+
     - Test sign-in screen rendering
     - Test user profile rendering
     - Test migration prompt rendering
@@ -309,7 +334,12 @@
     - _Requirements: 1.1, 1.4, 5.2, 6.1, 6.2, 6.3_
 
 - [ ] 10. Implement migration logic
-  - [ ] 10.1 Add migration methods to SyncManager
+  - [x] 10.1 Add migration methods to SyncManager
+
+
+
+
+
     - Implement migrateLocalTasks() method
     - Detect existing localStorage tasks
     - Upload tasks to cloud with user confirmation
@@ -317,23 +347,44 @@
     - Handle migration errors gracefully
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-  - [ ] 10.2 Write property test for migration upload
+  - [x] 10.2 Write property test for migration upload
+
+
+
+
+
     - **Property 11: Migration uploads all local tasks**
     - **Validates: Requirements 5.3**
 
-  - [ ] 10.3 Write property test for post-migration cleanup
+
+  - [x] 10.3 Write property test for post-migration cleanup
+
+
+
+
     - **Property 12: Post-migration localStorage cleanup**
     - **Validates: Requirements 5.4**
 
-  - [ ] 10.4 Write unit tests for migration logic
+  - [x] 10.4 Write unit tests for migration logic
+
+
+
+
+
     - Test local task detection
     - Test migration confirmation flow
     - Test migration decline flow
     - Test localStorage cleanup
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 11. Update TodoApp class for authentication integration
-  - [ ] 11.1 Modify TodoApp constructor
+- [x] 11. Update TodoApp class for authentication integration
+
+
+
+
+  - [x] 11.1 Modify TodoApp constructor
+
+
     - Initialize AuthManager
     - Initialize ApiClient
     - Initialize SyncManager
@@ -341,7 +392,9 @@
     - Update initialization flow to check auth state
     - _Requirements: 1.1, 1.4_
 
-  - [ ] 11.2 Implement authentication flow
+  - [x] 11.2 Implement authentication flow
+
+
     - Add handleAuthenticatedUser() method
     - Add handleUnauthenticatedUser() method
     - Check for local tasks and prompt migration
@@ -349,7 +402,9 @@
     - Setup sync listeners
     - _Requirements: 1.4, 2.4, 5.1_
 
-  - [ ] 11.3 Update task operations to sync with cloud
+  - [x] 11.3 Update task operations to sync with cloud
+
+
     - Modify handleAddTask() to call syncToCloud()
     - Modify toggleTask() to call syncToCloud()
     - Modify deleteTask() to call syncToCloud()
@@ -358,7 +413,9 @@
     - Modify deleteSubtask() to call syncToCloud()
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 11.4 Write integration tests for TodoApp with auth
+  - [x] 11.4 Write integration tests for TodoApp with auth
+
+
     - Test complete auth flow
     - Test task CRUD with sync
     - Test offline/online scenarios

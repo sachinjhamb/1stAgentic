@@ -30,9 +30,16 @@ module.exports = {
       displayName: 'frontend',
       testMatch: ['<rootDir>/frontend/**/*.test.js'],
       testEnvironment: 'node',
+      testPathIgnorePatterns: ['<rootDir>/frontend/app.test.js'],
       collectCoverageFrom: [
         '<rootDir>/frontend/auth-manager.js'
       ]
+    },
+    {
+      displayName: 'frontend-integration',
+      testMatch: ['<rootDir>/frontend/app.test.js'],
+      testEnvironment: 'jsdom',
+      collectCoverageFrom: []
     },
     {
       displayName: 'backend',

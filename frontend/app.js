@@ -696,6 +696,12 @@ class TodoApp {
         this.taskManager = new TaskManager();
         this.reminderManager = new ReminderManager();
         
+        // Initialize authentication components
+        this.authManager = null;
+        this.apiClient = null;
+        this.syncManager = null;
+        this.authUI = null;
+        
         this.userModifiedDate = false;
         this.userModifiedTime = false;
         
@@ -725,12 +731,178 @@ class TodoApp {
         this.taskTime.addEventListener('change', () => this.userModifiedTime = true);
     }
 
-    initializeApp() {
+    async initializeApp() {
+        // Check if config is available (auth enabled)
+        if (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG.googleClientId) {
+            await this.initializeWithAuth();
+        } else {
+            // Fallback to local-only mode
+            this.initializeLocalMode();
+        }
+    }
+
+    async initializeWithAuth() {
+        try {
+            // Initialize auth components
+            this.authManager = new AuthManager(window.APP_CONFIG.googleClientId);
+            this.apiClient = new ApiClient(window.APP_CONFIG.apiBaseUrl, this.authManager);
+            this.syncManager = new SyncManager(this.apiClient, this.taskManager);
+            this.authUI = new AuthUI(document.body, this.authManager);
+
+            // Initialize auth manager
+            await this.authManager.initialize();
+
+            // Setup auth state listener
+            this.authManager.onAuthStateChanged((isAuthenticated, user) => {
+                if (isAuthenticated) {
+                    this.handleAuthenticatedUser();
+                } else {
+                    this.handleUnauthenticatedUser();
+                }
+            });
+
+            // Check current auth state
+            if (this.authManager.isAuthenticated()) {
+                await this.handleAuthenticatedUser();
+            } else {
+                this.handleUnauthenticatedUser();
+            }
+        } catch (error) {
+            console.error('Failed to initialize with auth:', error);
+            // Fallback to local mode on error
+            this.initializeLocalMode();
+        }
+    }
+
+    initializeLocalMode() {
         const tasks = this.storage.loadTasks();
         this.taskManager.initializeTasks(tasks);
         this.renderTasks();
         this.reminderManager.setupReminders(this.taskManager.getTasks());
         this.setDefaultDateTime();
+    }
+
+    async handleAuthenticatedUser() {
+        // Render user profile in header
+        const user = this.authManager.getCurrentUser();
+        this.authUI.renderUserProfile(user);
+
+        // Check for local tasks to migrate
+        if (this.storage.hasLocalTasks()) {
+            await this.promptMigration();
+        } else {
+            // Load tasks from cloud
+            await this.loadTasksFromCloud();
+        }
+
+        // Setup sync listeners
+        this.setupSyncListeners();
+
+        // Setup UI
+        this.setDefaultDateTime();
+    }
+
+    handleUnauthenticatedUser() {
+        // Clear any existing user profile
+        this.authUI.removeUserProfile();
+
+        // Show sign-in screen
+        this.authUI.renderSignInScreen();
+
+        // Clear tasks and UI
+        this.taskManager.clearAllTasks();
+        this.renderTasks();
+    }
+
+    async promptMigration() {
+        const localTasks = this.storage.loadTasks();
+        const taskCount = localTasks.length;
+
+        return new Promise((resolve) => {
+            this.authUI.renderMigrationPrompt(
+                taskCount,
+                async () => {
+                    // User confirmed migration
+                    try {
+                        this.authUI.renderSyncStatus({ type: 'syncing', message: 'Migrating tasks...' });
+                        
+                        const result = await this.syncManager.performMigration(this.storage);
+                        
+                        if (result.success) {
+                            this.authUI.renderSyncStatus({ 
+                                type: 'success', 
+                                message: `${result.migrated} task${result.migrated !== 1 ? 's' : ''} migrated successfully` 
+                            });
+                            
+                            // Load tasks from cloud after migration
+                            await this.loadTasksFromCloud();
+                        } else {
+                            this.authUI.renderSyncStatus({ 
+                                type: 'error', 
+                                message: `Migration partially failed: ${result.migrated}/${result.total} tasks migrated` 
+                            });
+                        }
+                        
+                        resolve();
+                    } catch (error) {
+                        console.error('Migration failed:', error);
+                        this.authUI.renderSyncStatus({ 
+                            type: 'error', 
+                            message: 'Migration failed. Please try again.' 
+                        });
+                        resolve();
+                    }
+                },
+                () => {
+                    // User declined migration - clear local tasks and start fresh
+                    this.storage.clearLocalTasks();
+                    this.loadTasksFromCloud();
+                    resolve();
+                }
+            );
+        });
+    }
+
+    async loadTasksFromCloud() {
+        try {
+            this.authUI.renderSyncStatus({ type: 'syncing', message: 'Loading tasks...' });
+            
+            const tasks = await this.syncManager.syncFromCloud();
+            this.renderTasks();
+            this.reminderManager.setupReminders(this.taskManager.getTasks());
+            
+            this.authUI.renderSyncStatus({ type: 'success', message: 'Tasks loaded' });
+        } catch (error) {
+            console.error('Failed to load tasks from cloud:', error);
+            this.authUI.renderSyncStatus({ 
+                type: 'error', 
+                message: 'Failed to load tasks',
+                onRetry: () => this.loadTasksFromCloud()
+            });
+        }
+    }
+
+    setupSyncListeners() {
+        // Listen for sync status changes
+        this.syncManager.onSyncStatusChange((status, queueLength) => {
+            const statusMap = {
+                'idle': null, // Don't show anything for idle
+                'syncing': { type: 'syncing', message: 'Syncing...' },
+                'error': { type: 'error', message: 'Sync failed' },
+                'offline': { type: 'offline', message: `Offline (${queueLength} queued)` }
+            };
+
+            const statusConfig = statusMap[status];
+            if (statusConfig) {
+                this.authUI.renderSyncStatus(statusConfig);
+            } else if (status === 'idle' && queueLength === 0) {
+                // Hide status when idle and queue is empty
+                this.authUI.hideSyncStatus();
+            }
+        });
+
+        // Load queued operations on startup
+        this.syncManager.loadQueue();
     }
 
     setDefaultDateTime() {
@@ -741,7 +913,7 @@ class TodoApp {
         this.userModifiedTime = false;
     }
 
-    handleAddTask(e) {
+    async handleAddTask(e) {
         e.preventDefault();
         const taskText = this.taskInput.value.trim();
         
@@ -766,6 +938,15 @@ class TodoApp {
         this.renderTasks();
         this.reminderManager.setupReminderForTask(task);
         
+        // Sync to cloud if authenticated
+        if (this.syncManager && this.authManager && this.authManager.isAuthenticated()) {
+            await this.syncManager.syncToCloud({
+                type: 'CREATE',
+                task: task,
+                taskId: task.id
+            });
+        }
+        
         this.resetForm();
     }
 
@@ -775,7 +956,7 @@ class TodoApp {
         this.taskInput.focus();
     }
 
-    toggleTask(id) {
+    async toggleTask(id) {
         const task = this.taskManager.toggleTask(id);
         if (task) {
             this.storage.saveTasks(this.taskManager.getTasks());
@@ -786,14 +967,31 @@ class TodoApp {
             } else {
                 this.reminderManager.setupReminderForTask(task);
             }
+
+            // Sync to cloud if authenticated
+            if (this.syncManager && this.authManager && this.authManager.isAuthenticated()) {
+                await this.syncManager.syncToCloud({
+                    type: 'UPDATE',
+                    task: task,
+                    taskId: task.id
+                });
+            }
         }
     }
 
-    deleteTask(id) {
+    async deleteTask(id) {
         if (this.taskManager.deleteTask(id)) {
             this.reminderManager.cancelReminder(id);
             this.storage.saveTasks(this.taskManager.getTasks());
             this.renderTasks();
+
+            // Sync to cloud if authenticated
+            if (this.syncManager && this.authManager && this.authManager.isAuthenticated()) {
+                await this.syncManager.syncToCloud({
+                    type: 'DELETE',
+                    taskId: id
+                });
+            }
         }
     }
 
@@ -808,24 +1006,60 @@ class TodoApp {
         );
     }
 
-    addSubtask(taskId, subtaskText, notes = '', weight = 1) {
+    async addSubtask(taskId, subtaskText, notes = '', weight = 1) {
         if (this.taskManager.addSubtask(taskId, subtaskText, notes, weight)) {
             this.storage.saveTasks(this.taskManager.getTasks());
             this.renderTasks();
+
+            // Sync to cloud if authenticated
+            if (this.syncManager && this.authManager && this.authManager.isAuthenticated()) {
+                const task = this.taskManager.getTasks().find(t => t.id === taskId);
+                if (task) {
+                    await this.syncManager.syncToCloud({
+                        type: 'UPDATE',
+                        task: task,
+                        taskId: task.id
+                    });
+                }
+            }
         }
     }
 
-    toggleSubtask(taskId, subtaskId) {
+    async toggleSubtask(taskId, subtaskId) {
         if (this.taskManager.toggleSubtask(taskId, subtaskId)) {
             this.storage.saveTasks(this.taskManager.getTasks());
             this.renderTasks();
+
+            // Sync to cloud if authenticated
+            if (this.syncManager && this.authManager && this.authManager.isAuthenticated()) {
+                const task = this.taskManager.getTasks().find(t => t.id === taskId);
+                if (task) {
+                    await this.syncManager.syncToCloud({
+                        type: 'UPDATE',
+                        task: task,
+                        taskId: task.id
+                    });
+                }
+            }
         }
     }
 
-    deleteSubtask(taskId, subtaskId) {
+    async deleteSubtask(taskId, subtaskId) {
         if (this.taskManager.deleteSubtask(taskId, subtaskId)) {
             this.storage.saveTasks(this.taskManager.getTasks());
             this.renderTasks();
+
+            // Sync to cloud if authenticated
+            if (this.syncManager && this.authManager && this.authManager.isAuthenticated()) {
+                const task = this.taskManager.getTasks().find(t => t.id === taskId);
+                if (task) {
+                    await this.syncManager.syncToCloud({
+                        type: 'UPDATE',
+                        task: task,
+                        taskId: task.id
+                    });
+                }
+            }
         }
     }
 

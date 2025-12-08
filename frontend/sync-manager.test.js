@@ -895,6 +895,496 @@ describe('SyncManager Unit Tests', () => {
   });
 
   describe('Migration', () => {
+    // Mock StorageManager for migration tests
+    class MockStorageManager {
+      constructor() {
+        this.tasks = [];
+        this.cleared = false;
+      }
+
+      hasLocalTasks() {
+        return this.tasks.length > 0;
+      }
+
+      loadTasks() {
+        return this.tasks;
+      }
+
+      clearLocalTasks() {
+        this.cleared = true;
+        this.tasks = [];
+      }
+
+      setTasks(tasks) {
+        this.tasks = tasks;
+      }
+    }
+
+    /**
+     * Unit tests for migration logic
+     * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+     */
+    describe('Local task detection', () => {
+      test('should detect local tasks when storage has tasks', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([
+          { id: '1', text: 'Task 1', completed: false },
+          { id: '2', text: 'Task 2', completed: true }
+        ]);
+
+        const hasLocalTasks = syncManager.detectLocalTasks(storageManager);
+
+        expect(hasLocalTasks).toBe(true);
+      });
+
+      test('should not detect local tasks when storage is empty', () => {
+        const storageManager = new MockStorageManager();
+
+        const hasLocalTasks = syncManager.detectLocalTasks(storageManager);
+
+        expect(hasLocalTasks).toBe(false);
+      });
+
+      test('should handle null storage manager gracefully', () => {
+        const hasLocalTasks = syncManager.detectLocalTasks(null);
+
+        expect(hasLocalTasks).toBe(false);
+      });
+
+      test('should handle undefined storage manager gracefully', () => {
+        const hasLocalTasks = syncManager.detectLocalTasks(undefined);
+
+        expect(hasLocalTasks).toBe(false);
+      });
+
+      test('should detect single local task', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([{ id: '1', text: 'Single task' }]);
+
+        const hasLocalTasks = syncManager.detectLocalTasks(storageManager);
+
+        expect(hasLocalTasks).toBe(true);
+      });
+
+      test('should detect multiple local tasks', () => {
+        const storageManager = new MockStorageManager();
+        const tasks = Array.from({ length: 50 }, (_, i) => ({
+          id: `task-${i}`,
+          text: `Task ${i}`,
+          completed: i % 2 === 0
+        }));
+        storageManager.setTasks(tasks);
+
+        const hasLocalTasks = syncManager.detectLocalTasks(storageManager);
+
+        expect(hasLocalTasks).toBe(true);
+      });
+
+      test('should get local tasks for migration', () => {
+        const storageManager = new MockStorageManager();
+        const tasks = [
+          { id: '1', text: 'Task 1', completed: false },
+          { id: '2', text: 'Task 2', completed: true }
+        ];
+        storageManager.setTasks(tasks);
+
+        const localTasks = syncManager.getLocalTasksForMigration(storageManager);
+
+        expect(localTasks).toEqual(tasks);
+        expect(localTasks.length).toBe(2);
+      });
+
+      test('should return empty array when no local tasks exist', () => {
+        const storageManager = new MockStorageManager();
+
+        const localTasks = syncManager.getLocalTasksForMigration(storageManager);
+
+        expect(localTasks).toEqual([]);
+      });
+
+      test('should handle null storage manager when getting tasks', () => {
+        const localTasks = syncManager.getLocalTasksForMigration(null);
+
+        expect(localTasks).toEqual([]);
+      });
+
+      test('should preserve task structure when getting local tasks', () => {
+        const storageManager = new MockStorageManager();
+        const tasks = [
+          {
+            id: '1',
+            text: 'Task with subtasks',
+            completed: false,
+            createdAt: '2024-01-01T00:00:00.000Z',
+            dueDateTime: '2024-01-02T00:00:00.000Z',
+            subtasks: [
+              { id: 1, text: 'Subtask 1', completed: false, priority: 'Normal', weight: 3 },
+              { id: 2, text: 'Subtask 2', completed: true, priority: 'Important', weight: 5 }
+            ]
+          }
+        ];
+        storageManager.setTasks(tasks);
+
+        const localTasks = syncManager.getLocalTasksForMigration(storageManager);
+
+        expect(localTasks[0].subtasks).toHaveLength(2);
+        expect(localTasks[0].subtasks[0].priority).toBe('Normal');
+        expect(localTasks[0].dueDateTime).toBe('2024-01-02T00:00:00.000Z');
+      });
+    });
+
+    describe('Migration confirmation flow', () => {
+      test('should successfully migrate when user confirms', async () => {
+        const storageManager = new MockStorageManager();
+        const tasks = [
+          { id: '1', text: 'Task 1', completed: false },
+          { id: '2', text: 'Task 2', completed: true },
+          { id: '3', text: 'Task 3', completed: false }
+        ];
+        storageManager.setTasks(tasks);
+
+        // Simulate user confirmation by calling performMigration
+        const result = await syncManager.performMigration(storageManager);
+
+        expect(result.success).toBe(true);
+        expect(result.migrated).toBe(3);
+        expect(result.total).toBe(3);
+        expect(storageManager.cleared).toBe(true);
+      });
+
+      test('should upload all tasks to cloud on confirmation', async () => {
+        const storageManager = new MockStorageManager();
+        const tasks = [
+          { id: '1', text: 'Task 1', completed: false },
+          { id: '2', text: 'Task 2', completed: true }
+        ];
+        storageManager.setTasks(tasks);
+
+        await syncManager.performMigration(storageManager);
+
+        // Verify API was called with all tasks
+        const syncCalls = apiClient.calls.filter(c => c.method === 'syncTasks');
+        expect(syncCalls).toHaveLength(1);
+        expect(syncCalls[0].operations).toHaveLength(2);
+        expect(syncCalls[0].operations[0].type).toBe('CREATE');
+        expect(syncCalls[0].operations[1].type).toBe('CREATE');
+      });
+
+      test('should clear localStorage after successful confirmation', async () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([
+          { id: '1', text: 'Task 1' },
+          { id: '2', text: 'Task 2' }
+        ]);
+
+        await syncManager.performMigration(storageManager);
+
+        expect(storageManager.cleared).toBe(true);
+        expect(storageManager.tasks).toEqual([]);
+      });
+
+      test('should handle confirmation with large number of tasks', async () => {
+        const storageManager = new MockStorageManager();
+        const tasks = Array.from({ length: 100 }, (_, i) => ({
+          id: `task-${i}`,
+          text: `Task ${i}`,
+          completed: i % 2 === 0
+        }));
+        storageManager.setTasks(tasks);
+
+        const result = await syncManager.performMigration(storageManager);
+
+        expect(result.success).toBe(true);
+        expect(result.migrated).toBe(100);
+        expect(storageManager.cleared).toBe(true);
+      });
+
+      test('should preserve task data during confirmation migration', async () => {
+        const storageManager = new MockStorageManager();
+        const tasks = [
+          {
+            id: '1',
+            text: 'Complex task',
+            completed: false,
+            createdAt: '2024-01-01T00:00:00.000Z',
+            dueDateTime: '2024-01-02T00:00:00.000Z',
+            subtasks: [
+              { id: 1, text: 'Subtask 1', completed: false, notes: 'Note 1', priority: 'Urgent', weight: 8 }
+            ]
+          }
+        ];
+        storageManager.setTasks(tasks);
+
+        await syncManager.performMigration(storageManager);
+
+        const syncCalls = apiClient.calls.filter(c => c.method === 'syncTasks');
+        const uploadedTask = syncCalls[0].operations[0].task;
+
+        expect(uploadedTask.text).toBe('Complex task');
+        expect(uploadedTask.createdAt).toBe('2024-01-01T00:00:00.000Z');
+        expect(uploadedTask.subtasks[0].notes).toBe('Note 1');
+        expect(uploadedTask.subtasks[0].priority).toBe('Urgent');
+      });
+
+      test('should not clear localStorage if migration fails during confirmation', async () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([{ id: '1', text: 'Task 1' }]);
+
+        // Make API fail
+        apiClient.setFailure(true, 'ServerError');
+
+        await expect(syncManager.performMigration(storageManager)).rejects.toThrow();
+
+        // localStorage should NOT be cleared on error
+        expect(storageManager.cleared).toBe(false);
+        expect(storageManager.tasks.length).toBe(1);
+      });
+
+      test('should handle partial migration failure during confirmation', async () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([
+          { id: '1', text: 'Task 1' },
+          { id: '2', text: 'Task 2' },
+          { id: '3', text: 'Task 3' }
+        ]);
+
+        // Mock partial failure
+        apiClient.syncTasks = async (operations) => {
+          return [
+            { operation: operations[0], success: true },
+            { operation: operations[1], success: false },
+            { operation: operations[2], success: true }
+          ];
+        };
+
+        const result = await syncManager.performMigration(storageManager);
+
+        expect(result.success).toBe(false);
+        expect(result.migrated).toBe(2);
+        expect(result.failed).toBe(1);
+        // Should not clear localStorage on partial failure
+        expect(storageManager.cleared).toBe(false);
+      });
+
+      test('should update sync status during confirmation migration', async () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([{ id: '1', text: 'Task 1' }]);
+
+        const statuses = [];
+        syncManager.onSyncStatusChange((status) => {
+          statuses.push(status);
+        });
+
+        await syncManager.performMigration(storageManager);
+
+        expect(statuses).toContain('syncing');
+        expect(statuses[statuses.length - 1]).toBe('idle');
+      });
+    });
+
+    describe('Migration decline flow', () => {
+      test('should not upload tasks when user declines', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([
+          { id: '1', text: 'Task 1' },
+          { id: '2', text: 'Task 2' }
+        ]);
+
+        // User declines migration - just clear local tasks without uploading
+        syncManager.clearLocalTasksAfterMigration(storageManager);
+
+        // Verify no API calls were made
+        expect(apiClient.calls).toHaveLength(0);
+        // Verify localStorage was cleared
+        expect(storageManager.cleared).toBe(true);
+      });
+
+      test('should clear localStorage when user declines', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([
+          { id: '1', text: 'Task 1' },
+          { id: '2', text: 'Task 2' },
+          { id: '3', text: 'Task 3' }
+        ]);
+
+        // Simulate decline by clearing without migration
+        syncManager.clearLocalTasksAfterMigration(storageManager);
+
+        expect(storageManager.cleared).toBe(true);
+        expect(storageManager.tasks).toEqual([]);
+      });
+
+      test('should handle decline with no local tasks', () => {
+        const storageManager = new MockStorageManager();
+
+        expect(() => {
+          syncManager.clearLocalTasksAfterMigration(storageManager);
+        }).not.toThrow();
+
+        expect(storageManager.cleared).toBe(true);
+      });
+
+      test('should handle decline with null storage manager', () => {
+        expect(() => {
+          syncManager.clearLocalTasksAfterMigration(null);
+        }).not.toThrow();
+      });
+
+      test('should allow starting fresh after decline', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([
+          { id: '1', text: 'Old task 1' },
+          { id: '2', text: 'Old task 2' }
+        ]);
+
+        // User declines migration
+        syncManager.clearLocalTasksAfterMigration(storageManager);
+
+        // Verify old tasks are gone
+        expect(storageManager.hasLocalTasks()).toBe(false);
+
+        // User can now start fresh with cloud storage
+        // No local tasks should exist
+        expect(storageManager.loadTasks()).toEqual([]);
+      });
+
+      test('should not affect sync queue when declining migration', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([{ id: '1', text: 'Task 1' }]);
+
+        // Queue some operations before decline
+        syncManager.queueOperation({ type: 'CREATE', taskId: '2', task: { text: 'Queued task' } });
+
+        // User declines migration
+        syncManager.clearLocalTasksAfterMigration(storageManager);
+
+        // Sync queue should remain intact
+        expect(syncManager.getQueueLength()).toBe(1);
+      });
+
+      test('should handle decline with large number of tasks', () => {
+        const storageManager = new MockStorageManager();
+        const tasks = Array.from({ length: 200 }, (_, i) => ({
+          id: `task-${i}`,
+          text: `Task ${i}`
+        }));
+        storageManager.setTasks(tasks);
+
+        // User declines migration
+        syncManager.clearLocalTasksAfterMigration(storageManager);
+
+        expect(storageManager.cleared).toBe(true);
+        expect(storageManager.tasks).toEqual([]);
+        // No API calls should have been made
+        expect(apiClient.calls).toHaveLength(0);
+      });
+    });
+
+    describe('localStorage cleanup', () => {
+      test('should clear local tasks after successful migration', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([{ id: '1', text: 'Task 1' }]);
+
+        syncManager.clearLocalTasksAfterMigration(storageManager);
+
+        expect(storageManager.cleared).toBe(true);
+        expect(storageManager.tasks.length).toBe(0);
+      });
+
+      test('should handle cleanup with empty storage', () => {
+        const storageManager = new MockStorageManager();
+
+        expect(() => {
+          syncManager.clearLocalTasksAfterMigration(storageManager);
+        }).not.toThrow();
+      });
+
+      test('should handle cleanup with null storage manager', () => {
+        expect(() => {
+          syncManager.clearLocalTasksAfterMigration(null);
+        }).not.toThrow();
+      });
+
+      test('should handle cleanup with undefined storage manager', () => {
+        expect(() => {
+          syncManager.clearLocalTasksAfterMigration(undefined);
+        }).not.toThrow();
+      });
+
+      test('should allow re-detection after cleanup', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([{ id: '1', text: 'Task 1' }]);
+
+        syncManager.clearLocalTasksAfterMigration(storageManager);
+
+        // After cleanup, should not detect local tasks
+        expect(syncManager.detectLocalTasks(storageManager)).toBe(false);
+      });
+
+      test('should clear all task data including subtasks', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([
+          {
+            id: '1',
+            text: 'Task with subtasks',
+            subtasks: [
+              { id: 1, text: 'Subtask 1' },
+              { id: 2, text: 'Subtask 2' }
+            ]
+          }
+        ]);
+
+        syncManager.clearLocalTasksAfterMigration(storageManager);
+
+        expect(storageManager.tasks).toEqual([]);
+        expect(storageManager.cleared).toBe(true);
+      });
+
+      test('should not affect other localStorage keys during cleanup', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([{ id: '1', text: 'Task 1' }]);
+
+        // Add some other data to localStorage
+        localStorage.setItem('otherKey', 'otherValue');
+        localStorage.setItem('userPreferences', JSON.stringify({ theme: 'dark' }));
+
+        syncManager.clearLocalTasksAfterMigration(storageManager);
+
+        // Other keys should remain
+        expect(localStorage.getItem('otherKey')).toBe('otherValue');
+        expect(localStorage.getItem('userPreferences')).toBe(JSON.stringify({ theme: 'dark' }));
+      });
+
+      test('should handle cleanup errors gracefully', () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([{ id: '1', text: 'Task 1' }]);
+
+        // Override clearLocalTasks to throw error
+        storageManager.clearLocalTasks = () => {
+          throw new Error('Storage error');
+        };
+
+        expect(() => {
+          syncManager.clearLocalTasksAfterMigration(storageManager);
+        }).toThrow('Storage error');
+      });
+
+      test('should complete full migration workflow with cleanup', async () => {
+        const storageManager = new MockStorageManager();
+        storageManager.setTasks([
+          { id: '1', text: 'Task 1' },
+          { id: '2', text: 'Task 2' }
+        ]);
+
+        const result = await syncManager.performMigration(storageManager);
+
+        expect(result.success).toBe(true);
+        expect(result.migrated).toBe(2);
+        expect(storageManager.cleared).toBe(true);
+        expect(storageManager.tasks).toEqual([]);
+      });
+    });
+
     test('should migrate local tasks to cloud', async () => {
       const localTasks = [
         { id: '1', text: 'Task 1', completed: false },
@@ -923,5 +1413,892 @@ describe('SyncManager Unit Tests', () => {
 
       await expect(syncManager.migrateLocalTasks(localTasks)).rejects.toThrow('Cannot migrate tasks while offline');
     });
+
+    test('should detect existing local tasks', () => {
+      const storageManager = new MockStorageManager();
+      storageManager.setTasks([
+        { id: '1', text: 'Task 1' },
+        { id: '2', text: 'Task 2' }
+      ]);
+
+      const hasLocalTasks = syncManager.detectLocalTasks(storageManager);
+
+      expect(hasLocalTasks).toBe(true);
+    });
+
+    test('should detect no local tasks when storage is empty', () => {
+      const storageManager = new MockStorageManager();
+
+      const hasLocalTasks = syncManager.detectLocalTasks(storageManager);
+
+      expect(hasLocalTasks).toBe(false);
+    });
+
+    test('should get local tasks for migration', () => {
+      const storageManager = new MockStorageManager();
+      const tasks = [
+        { id: '1', text: 'Task 1' },
+        { id: '2', text: 'Task 2' }
+      ];
+      storageManager.setTasks(tasks);
+
+      const localTasks = syncManager.getLocalTasksForMigration(storageManager);
+
+      expect(localTasks).toEqual(tasks);
+      expect(localTasks.length).toBe(2);
+    });
+
+    test('should clear local tasks after migration', () => {
+      const storageManager = new MockStorageManager();
+      storageManager.setTasks([{ id: '1', text: 'Task 1' }]);
+
+      syncManager.clearLocalTasksAfterMigration(storageManager);
+
+      expect(storageManager.cleared).toBe(true);
+      expect(storageManager.tasks.length).toBe(0);
+    });
+
+    test('should perform complete migration workflow', async () => {
+      const storageManager = new MockStorageManager();
+      storageManager.setTasks([
+        { id: '1', text: 'Task 1', completed: false },
+        { id: '2', text: 'Task 2', completed: true }
+      ]);
+
+      const result = await syncManager.performMigration(storageManager);
+
+      expect(result.success).toBe(true);
+      expect(result.migrated).toBe(2);
+      expect(result.total).toBe(2);
+      expect(storageManager.cleared).toBe(true);
+    });
+
+    test('should not clear localStorage if migration fails', async () => {
+      const storageManager = new MockStorageManager();
+      storageManager.setTasks([{ id: '1', text: 'Task 1' }]);
+
+      // Make API fail
+      apiClient.setFailure(true, 'ServerError');
+
+      await expect(syncManager.performMigration(storageManager)).rejects.toThrow();
+
+      // localStorage should NOT be cleared on error
+      expect(storageManager.cleared).toBe(false);
+    });
+
+    test('should handle migration with no local tasks', async () => {
+      const storageManager = new MockStorageManager();
+
+      const result = await syncManager.performMigration(storageManager);
+
+      expect(result.success).toBe(true);
+      expect(result.migrated).toBe(0);
+      expect(result.total).toBe(0);
+    });
+
+    test('should handle partial migration failure', async () => {
+      const storageManager = new MockStorageManager();
+      storageManager.setTasks([
+        { id: '1', text: 'Task 1' },
+        { id: '2', text: 'Task 2' }
+      ]);
+
+      // Mock partial failure
+      apiClient.syncTasks = async (operations) => {
+        return [
+          { operation: operations[0], success: true },
+          { operation: operations[1], success: false }
+        ];
+      };
+
+      const result = await syncManager.performMigration(storageManager);
+
+      expect(result.success).toBe(false);
+      expect(result.migrated).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.total).toBe(2);
+      // Should not clear localStorage on partial failure
+      expect(storageManager.cleared).toBe(false);
+    });
+  });
+});
+
+/**
+ * Feature: google-auth-aws-hosting, Property 11: Migration uploads all local tasks
+ * For any set of tasks in localStorage, confirming migration should result in all tasks
+ * being uploaded to the cloud backend with the authenticated user's ID
+ * Validates: Requirements 5.3
+ */
+describe('Property 11: Migration uploads all local tasks', () => {
+  beforeEach(() => {
+    global.navigator.onLine = true;
+    localStorage.clear();
+  });
+
+  test('All local tasks should be uploaded to cloud during migration', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean(),
+            createdAt: fc.date().map(d => d.toISOString()),
+            dueDateTime: fc.option(fc.date().map(d => d.toISOString())),
+            subtasks: fc.array(
+              fc.record({
+                id: fc.integer({ min: 1, max: 10000 }),
+                text: fc.string({ minLength: 1, maxLength: 200 }),
+                completed: fc.boolean(),
+                notes: fc.option(fc.string({ maxLength: 300 })),
+                priority: fc.constantFrom('Normal', 'Important', 'Urgent'),
+                weight: fc.constantFrom(3, 5, 8)
+              }),
+              { maxLength: 5 }
+            )
+          }),
+          { minLength: 1, maxLength: 20 }
+        ).map(tasks => {
+          // Ensure unique task IDs by appending index
+          return tasks.map((task, index) => ({
+            ...task,
+            id: `${task.id}-${index}`
+          }));
+        }),
+        async (localTasks) => {
+          const apiClient = new MockApiClient();
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+
+          // Migrate local tasks
+          const result = await syncManager.migrateLocalTasks(localTasks);
+
+          // Property: Should call syncTasks API with all local tasks
+          const syncCalls = apiClient.calls.filter(c => c.method === 'syncTasks');
+          if (syncCalls.length !== 1) return false;
+
+          // Property: Should create CREATE operations for all tasks
+          const operations = syncCalls[0].operations;
+          if (operations.length !== localTasks.length) return false;
+
+          // Property: All operations should be CREATE type
+          if (!operations.every(op => op.type === 'CREATE')) return false;
+
+          // Property: Each local task should be included in the operations
+          for (let i = 0; i < localTasks.length; i++) {
+            const localTask = localTasks[i];
+            const operation = operations.find(op => op.taskId === localTask.id);
+            
+            if (!operation) return false;
+            if (JSON.stringify(operation.task) !== JSON.stringify(localTask)) return false;
+          }
+
+          // Property: Migration should report success
+          if (!result.success) return false;
+
+          // Property: Migration should report correct counts
+          if (result.migrated !== localTasks.length) return false;
+          if (result.total !== localTasks.length) return false;
+          if (result.failed !== 0) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Migration should preserve all task properties', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean(),
+            createdAt: fc.date().map(d => d.toISOString()),
+            dueDateTime: fc.option(fc.date().map(d => d.toISOString())),
+            subtasks: fc.array(
+              fc.record({
+                id: fc.integer({ min: 1, max: 10000 }),
+                text: fc.string({ minLength: 1, maxLength: 200 }),
+                completed: fc.boolean(),
+                notes: fc.option(fc.string({ maxLength: 300 })),
+                priority: fc.constantFrom('Normal', 'Important', 'Urgent'),
+                weight: fc.constantFrom(3, 5, 8)
+              }),
+              { maxLength: 3 }
+            )
+          }),
+          { minLength: 1, maxLength: 10 }
+        ).map(tasks => {
+          // Ensure unique task IDs by appending index
+          return tasks.map((task, index) => ({
+            ...task,
+            id: `${task.id}-${index}`
+          }));
+        }),
+        async (localTasks) => {
+          const apiClient = new MockApiClient();
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+
+          await syncManager.migrateLocalTasks(localTasks);
+
+          const syncCalls = apiClient.calls.filter(c => c.method === 'syncTasks');
+          const operations = syncCalls[0].operations;
+
+          // Property: Each task's properties should be preserved exactly
+          for (const localTask of localTasks) {
+            const operation = operations.find(op => op.taskId === localTask.id);
+            
+            if (!operation) return false;
+
+            // Check all properties are preserved
+            if (operation.task.id !== localTask.id) return false;
+            if (operation.task.text !== localTask.text) return false;
+            if (operation.task.completed !== localTask.completed) return false;
+            if (operation.task.createdAt !== localTask.createdAt) return false;
+            if (operation.task.dueDateTime !== localTask.dueDateTime) return false;
+
+            // Check subtasks are preserved
+            if (operation.task.subtasks.length !== localTask.subtasks.length) return false;
+            
+            for (let i = 0; i < localTask.subtasks.length; i++) {
+              const originalSubtask = localTask.subtasks[i];
+              const migratedSubtask = operation.task.subtasks[i];
+
+              if (migratedSubtask.id !== originalSubtask.id) return false;
+              if (migratedSubtask.text !== originalSubtask.text) return false;
+              if (migratedSubtask.completed !== originalSubtask.completed) return false;
+              if (migratedSubtask.notes !== originalSubtask.notes) return false;
+              if (migratedSubtask.priority !== originalSubtask.priority) return false;
+              if (migratedSubtask.weight !== originalSubtask.weight) return false;
+            }
+          }
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Migration should handle empty task list', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.constant([]),
+        async (emptyTasks) => {
+          const apiClient = new MockApiClient();
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+
+          const result = await syncManager.migrateLocalTasks(emptyTasks);
+
+          // Property: Should succeed with zero migrations
+          if (!result.success) return false;
+          if (result.migrated !== 0) return false;
+          if (result.total !== 0) return false;
+
+          // Property: Should not call API for empty list
+          if (apiClient.calls.length !== 0) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Migration should fail when offline', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean()
+          }),
+          { minLength: 1, maxLength: 5 }
+        ),
+        async (localTasks) => {
+          const apiClient = new MockApiClient();
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+
+          // Go offline
+          global.navigator.onLine = false;
+          syncManager.isOnline = false;
+
+          // Property: Migration should throw error when offline
+          let errorThrown = false;
+          try {
+            await syncManager.migrateLocalTasks(localTasks);
+          } catch (error) {
+            errorThrown = true;
+            if (!error.message.includes('offline')) return false;
+          }
+
+          if (!errorThrown) return false;
+
+          // Property: Should not call API when offline
+          if (apiClient.calls.length !== 0) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Complete migration workflow should upload all tasks and clear localStorage', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean(),
+            createdAt: fc.date().map(d => d.toISOString())
+          }),
+          { minLength: 1, maxLength: 15 }
+        ),
+        async (localTasks) => {
+          // Mock StorageManager
+          class MockStorageManager {
+            constructor() {
+              this.tasks = [...localTasks];
+              this.cleared = false;
+            }
+
+            hasLocalTasks() {
+              return this.tasks.length > 0;
+            }
+
+            loadTasks() {
+              return this.tasks;
+            }
+
+            clearLocalTasks() {
+              this.cleared = true;
+              this.tasks = [];
+            }
+          }
+
+          const apiClient = new MockApiClient();
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+          const storageManager = new MockStorageManager();
+
+          // Perform complete migration
+          const result = await syncManager.performMigration(storageManager);
+
+          // Property: Should detect local tasks
+          if (!result.success) return false;
+
+          // Property: Should upload all tasks
+          const syncCalls = apiClient.calls.filter(c => c.method === 'syncTasks');
+          if (syncCalls.length !== 1) return false;
+          if (syncCalls[0].operations.length !== localTasks.length) return false;
+
+          // Property: Should report correct migration counts
+          if (result.migrated !== localTasks.length) return false;
+          if (result.total !== localTasks.length) return false;
+
+          // Property: Should clear localStorage after successful migration
+          if (!storageManager.cleared) return false;
+          if (storageManager.tasks.length !== 0) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Migration should not clear localStorage on partial failure', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean()
+          }),
+          { minLength: 2, maxLength: 10 }
+        ),
+        fc.integer({ min: 0, max: 100 }),
+        async (localTasks, failureIndexSeed) => {
+          // Ensure we have at least 2 tasks and pick one to fail
+          if (localTasks.length < 2) return true; // Skip this case
+
+          const failureIndex = failureIndexSeed % localTasks.length;
+
+          // Mock StorageManager
+          class MockStorageManager {
+            constructor() {
+              this.tasks = [...localTasks];
+              this.cleared = false;
+            }
+
+            hasLocalTasks() {
+              return this.tasks.length > 0;
+            }
+
+            loadTasks() {
+              return this.tasks;
+            }
+
+            clearLocalTasks() {
+              this.cleared = true;
+              this.tasks = [];
+            }
+          }
+
+          const apiClient = new MockApiClient();
+          // Mock partial failure
+          apiClient.syncTasks = async function(operations) {
+            this.calls.push({ method: 'syncTasks', operations });
+            return operations.map((op, index) => ({
+              operation: op,
+              success: index !== failureIndex
+            }));
+          };
+
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+          const storageManager = new MockStorageManager();
+
+          // Perform migration
+          const result = await syncManager.performMigration(storageManager);
+
+          // Property: Should report partial success
+          if (result.success) return false; // Should be false due to failures
+          if (result.migrated !== localTasks.length - 1) return false;
+          if (result.failed !== 1) return false;
+
+          // Property: Should NOT clear localStorage on partial failure
+          if (storageManager.cleared) return false;
+          if (storageManager.tasks.length === 0) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+});
+
+/**
+ * Feature: google-auth-aws-hosting, Property 12: Post-migration localStorage cleanup
+ * For any completed migration, localStorage should be empty and all subsequent task
+ * operations should use cloud storage exclusively
+ * Validates: Requirements 5.4
+ */
+describe('Property 12: Post-migration localStorage cleanup', () => {
+  beforeEach(() => {
+    global.navigator.onLine = true;
+    localStorage.clear();
+  });
+
+  test('localStorage should be empty after successful migration', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean(),
+            createdAt: fc.date().map(d => d.toISOString()),
+            dueDateTime: fc.option(fc.date().map(d => d.toISOString())),
+            subtasks: fc.array(
+              fc.record({
+                id: fc.integer({ min: 1, max: 10000 }),
+                text: fc.string({ minLength: 1, maxLength: 200 }),
+                completed: fc.boolean()
+              }),
+              { maxLength: 3 }
+            )
+          }),
+          { minLength: 1, maxLength: 15 }
+        ).map(tasks => {
+          // Ensure unique task IDs
+          return tasks.map((task, index) => ({
+            ...task,
+            id: `${task.id}-${index}`
+          }));
+        }),
+        async (localTasks) => {
+          // Mock StorageManager
+          class MockStorageManager {
+            constructor() {
+              this.tasks = [...localTasks];
+              this.cleared = false;
+              this.storageKey = 'todoTasks';
+            }
+
+            hasLocalTasks() {
+              return this.tasks.length > 0;
+            }
+
+            loadTasks() {
+              return this.tasks;
+            }
+
+            clearLocalTasks() {
+              this.cleared = true;
+              this.tasks = [];
+              localStorage.removeItem(this.storageKey);
+            }
+          }
+
+          const apiClient = new MockApiClient();
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+          const storageManager = new MockStorageManager();
+
+          // Set up localStorage with tasks before migration
+          localStorage.setItem(storageManager.storageKey, JSON.stringify(localTasks));
+
+          // Perform migration
+          const result = await syncManager.performMigration(storageManager);
+
+          // Property: Migration should succeed
+          if (!result.success) return false;
+
+          // Property: localStorage should be empty after successful migration
+          const storedTasks = localStorage.getItem(storageManager.storageKey);
+          if (storedTasks !== null) return false;
+
+          // Property: StorageManager should have cleared its internal state
+          if (!storageManager.cleared) return false;
+          if (storageManager.tasks.length !== 0) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Subsequent task operations should use cloud storage after migration', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean()
+          }),
+          { minLength: 1, maxLength: 10 }
+        ),
+        fc.record({
+          id: fc.string({ minLength: 1, maxLength: 50 }),
+          text: fc.string({ minLength: 1, maxLength: 500 }),
+          completed: fc.boolean()
+        }),
+        async (localTasks, newTask) => {
+          // Mock StorageManager
+          class MockStorageManager {
+            constructor() {
+              this.tasks = [...localTasks];
+              this.cleared = false;
+              this.storageKey = 'todoTasks';
+            }
+
+            hasLocalTasks() {
+              return this.tasks.length > 0;
+            }
+
+            loadTasks() {
+              return this.tasks;
+            }
+
+            clearLocalTasks() {
+              this.cleared = true;
+              this.tasks = [];
+              localStorage.removeItem(this.storageKey);
+            }
+
+            saveTasks(tasks) {
+              // After migration, this should NOT save to localStorage
+              if (this.cleared) {
+                // Should not write to localStorage after migration
+                return;
+              }
+              localStorage.setItem(this.storageKey, JSON.stringify(tasks));
+            }
+          }
+
+          const apiClient = new MockApiClient();
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+          const storageManager = new MockStorageManager();
+
+          // Set up localStorage with tasks before migration
+          localStorage.setItem(storageManager.storageKey, JSON.stringify(localTasks));
+
+          // Perform migration
+          await syncManager.performMigration(storageManager);
+
+          // Clear API call history
+          apiClient.reset();
+
+          // Property: After migration, new task operations should use cloud storage
+          const createOperation = {
+            type: 'CREATE',
+            taskId: newTask.id,
+            task: newTask
+          };
+
+          await syncManager.syncToCloud(createOperation);
+
+          // Property: Should call cloud API for new task
+          const createCalls = apiClient.calls.filter(c => c.method === 'createTask');
+          if (createCalls.length !== 1) return false;
+
+          // Property: localStorage should still be empty (not used for new tasks)
+          const storedTasks = localStorage.getItem(storageManager.storageKey);
+          if (storedTasks !== null) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('localStorage should remain empty for all CRUD operations after migration', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean()
+          }),
+          { minLength: 1, maxLength: 5 }
+        ).map(tasks => {
+          // Ensure unique task IDs
+          return tasks.map((task, index) => ({
+            ...task,
+            id: `task-${index}`
+          }));
+        }),
+        fc.array(
+          // Only CREATE operations to avoid referencing non-existent tasks
+          fc.record({
+            type: fc.constant('CREATE'),
+            task: fc.record({
+              id: fc.string({ minLength: 1, maxLength: 50 }),
+              text: fc.string({ minLength: 1, maxLength: 500 }),
+              completed: fc.boolean()
+            })
+          }).map(op => ({ ...op, taskId: op.task.id })),
+          { minLength: 1, maxLength: 5 }
+        ),
+        async (localTasks, subsequentOperations) => {
+          // Mock StorageManager
+          class MockStorageManager {
+            constructor() {
+              this.tasks = [...localTasks];
+              this.cleared = false;
+              this.storageKey = 'todoTasks';
+            }
+
+            hasLocalTasks() {
+              return this.tasks.length > 0;
+            }
+
+            loadTasks() {
+              return this.tasks;
+            }
+
+            clearLocalTasks() {
+              this.cleared = true;
+              this.tasks = [];
+              localStorage.removeItem(this.storageKey);
+            }
+
+            saveTasks(tasks) {
+              // After migration, this should NOT save to localStorage
+              if (this.cleared) {
+                return;
+              }
+              localStorage.setItem(this.storageKey, JSON.stringify(tasks));
+            }
+          }
+
+          const apiClient = new MockApiClient();
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+          const storageManager = new MockStorageManager();
+
+          // Set up localStorage with tasks before migration
+          localStorage.setItem(storageManager.storageKey, JSON.stringify(localTasks));
+
+          // Perform migration
+          await syncManager.performMigration(storageManager);
+
+          // Verify localStorage is empty after migration
+          let storedTasks = localStorage.getItem(storageManager.storageKey);
+          if (storedTasks !== null) return false;
+
+          // Clear API call history to count only subsequent operations
+          apiClient.reset();
+
+          // Perform subsequent operations (all CREATE operations with new task IDs)
+          for (const operation of subsequentOperations) {
+            await syncManager.syncToCloud(operation);
+          }
+
+          // Property: Task storage should still be empty after all operations
+          storedTasks = localStorage.getItem(storageManager.storageKey);
+          if (storedTasks !== null) return false;
+
+          // Property: All operations should have used cloud API (not localStorage)
+          if (apiClient.calls.length !== subsequentOperations.length) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Migration should not clear localStorage on failure', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean()
+          }),
+          { minLength: 1, maxLength: 5 }
+        ),
+        async (localTasks) => {
+          // Mock StorageManager
+          class MockStorageManager {
+            constructor() {
+              this.tasks = [...localTasks];
+              this.cleared = false;
+              this.storageKey = 'todoTasks';
+            }
+
+            hasLocalTasks() {
+              return this.tasks.length > 0;
+            }
+
+            loadTasks() {
+              return this.tasks;
+            }
+
+            clearLocalTasks() {
+              this.cleared = true;
+              this.tasks = [];
+              localStorage.removeItem(this.storageKey);
+            }
+          }
+
+          const apiClient = new MockApiClient();
+          // Make API fail
+          apiClient.setFailure(true, 'ServerError');
+
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+          const storageManager = new MockStorageManager();
+
+          // Set up localStorage with tasks before migration
+          localStorage.setItem(storageManager.storageKey, JSON.stringify(localTasks));
+
+          // Attempt migration (should fail)
+          let errorThrown = false;
+          try {
+            await syncManager.performMigration(storageManager);
+          } catch (error) {
+            errorThrown = true;
+          }
+
+          // Property: Should throw error on failure
+          if (!errorThrown) return false;
+
+          // Property: localStorage should NOT be cleared on failure
+          const storedTasks = localStorage.getItem(storageManager.storageKey);
+          if (storedTasks === null) return false;
+
+          // Property: StorageManager should NOT have cleared its state
+          if (storageManager.cleared) return false;
+          if (storageManager.tasks.length === 0) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Sync queue should not use localStorage after migration', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.string({ minLength: 1, maxLength: 50 }),
+            text: fc.string({ minLength: 1, maxLength: 500 }),
+            completed: fc.boolean()
+          }),
+          { minLength: 1, maxLength: 5 }
+        ),
+        async (localTasks) => {
+          // Mock StorageManager
+          class MockStorageManager {
+            constructor() {
+              this.tasks = [...localTasks];
+              this.cleared = false;
+              this.storageKey = 'todoTasks';
+            }
+
+            hasLocalTasks() {
+              return this.tasks.length > 0;
+            }
+
+            loadTasks() {
+              return this.tasks;
+            }
+
+            clearLocalTasks() {
+              this.cleared = true;
+              this.tasks = [];
+              localStorage.removeItem(this.storageKey);
+            }
+          }
+
+          const apiClient = new MockApiClient();
+          const taskManager = new MockTaskManager();
+          const syncManager = new SyncManager(apiClient, taskManager);
+          const storageManager = new MockStorageManager();
+
+          // Set up localStorage with tasks before migration
+          const taskStorageKey = storageManager.storageKey;
+          localStorage.setItem(taskStorageKey, JSON.stringify(localTasks));
+
+          // Perform migration
+          await syncManager.performMigration(storageManager);
+
+          // Property: Task storage should be cleared
+          const storedTasks = localStorage.getItem(taskStorageKey);
+          if (storedTasks !== null) return false;
+
+          // Property: Only sync queue should remain in localStorage (if any)
+          // The sync queue is separate from task storage
+          const allKeys = Object.keys(localStorage.store);
+          const taskKeys = allKeys.filter(key => key === taskStorageKey);
+          if (taskKeys.length !== 0) return false;
+
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
   });
 });

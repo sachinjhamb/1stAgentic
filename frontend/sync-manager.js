@@ -310,13 +310,48 @@ class SyncManager {
   }
 
   /**
+   * Detect if there are existing tasks in localStorage
+   * @param {StorageManager} storageManager - StorageManager instance
+   * @returns {boolean} True if local tasks exist
+   */
+  detectLocalTasks(storageManager) {
+    if (!storageManager) {
+      console.warn('No storage manager provided for local task detection');
+      return false;
+    }
+    
+    return storageManager.hasLocalTasks();
+  }
+
+  /**
+   * Get local tasks from localStorage for migration
+   * @param {StorageManager} storageManager - StorageManager instance
+   * @returns {Array} Array of tasks from localStorage
+   */
+  getLocalTasksForMigration(storageManager) {
+    if (!storageManager) {
+      console.warn('No storage manager provided');
+      return [];
+    }
+
+    try {
+      const tasks = storageManager.loadTasks();
+      console.log(`Found ${tasks.length} local tasks for migration`);
+      return tasks;
+    } catch (error) {
+      console.error('Failed to load local tasks for migration:', error);
+      return [];
+    }
+  }
+
+  /**
    * Migrate local tasks from localStorage to cloud
    * @param {Array} localTasks - Tasks from localStorage
    * @returns {Promise<object>} Migration results
    */
   async migrateLocalTasks(localTasks) {
     if (!Array.isArray(localTasks) || localTasks.length === 0) {
-      return { success: true, migrated: 0 };
+      return { success: true, migrated: 0, total: 0 };
     }
 
     if (!this.isOnline) {
@@ -337,12 +372,14 @@ class SyncManager {
 
       // Count successful migrations
       const successCount = results.filter(r => r.success).length;
+      const failedCount = results.length - successCount;
 
       this.updateSyncStatus('idle');
 
       return {
-        success: true,
+        success: failedCount === 0,
         migrated: successCount,
+        failed: failedCount,
         total: localTasks.length,
         results
       };
@@ -350,6 +387,72 @@ class SyncManager {
     } catch (error) {
       console.error('Migration failed:', error);
       this.updateSyncStatus('error');
+      throw error;
+    }
+  }
+
+  /**
+   * Clear local tasks from localStorage after successful migration
+   * @param {StorageManager} storageManager - StorageManager instance
+   */
+  clearLocalTasksAfterMigration(storageManager) {
+    if (!storageManager) {
+      console.warn('No storage manager provided for clearing local tasks');
+      return;
+    }
+
+    try {
+      storageManager.clearLocalTasks();
+      console.log('Local tasks cleared after successful migration');
+    } catch (error) {
+      console.error('Failed to clear local tasks after migration:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Complete migration workflow: detect, upload, and clear local tasks
+   * This method orchestrates the full migration process
+   * @param {StorageManager} storageManager - StorageManager instance
+   * @returns {Promise<object>} Migration results
+   */
+  async performMigration(storageManager) {
+    if (!storageManager) {
+      throw new Error('StorageManager is required for migration');
+    }
+
+    // Step 1: Detect local tasks
+    if (!this.detectLocalTasks(storageManager)) {
+      console.log('No local tasks to migrate');
+      return { success: true, migrated: 0, total: 0 };
+    }
+
+    // Step 2: Get local tasks
+    const localTasks = this.getLocalTasksForMigration(storageManager);
+    
+    if (localTasks.length === 0) {
+      console.log('No tasks found in localStorage');
+      return { success: true, migrated: 0, total: 0 };
+    }
+
+    try {
+      // Step 3: Upload tasks to cloud
+      const migrationResult = await this.migrateLocalTasks(localTasks);
+
+      // Step 4: Clear localStorage only if migration was successful
+      if (migrationResult.success) {
+        this.clearLocalTasksAfterMigration(storageManager);
+        console.log(`Migration complete: ${migrationResult.migrated}/${migrationResult.total} tasks migrated`);
+      } else {
+        console.warn(`Migration partially failed: ${migrationResult.migrated}/${migrationResult.total} tasks migrated`);
+        // Don't clear localStorage if some tasks failed to migrate
+      }
+
+      return migrationResult;
+
+    } catch (error) {
+      console.error('Migration workflow failed:', error);
+      // Don't clear localStorage on error to prevent data loss
       throw error;
     }
   }
