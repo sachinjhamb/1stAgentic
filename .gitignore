@@ -40,6 +40,10 @@ yarn-error.log*
 tmp/
 temp/
 *.tmp
+*.backup.*
+get-cloudfront-url.ps1
+infrastructure/test-*.ps1
+infrastructure/test-*.html
 
 # Test coverage
 coverage/

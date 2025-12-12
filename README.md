@@ -288,6 +288,228 @@ These guides cover:
 
 ## Deployment to AWS
 
-For production deployment to AWS with Lambda, API Gateway, DynamoDB, and CloudFront, see the infrastructure documentation in the `infrastructure/` directory (coming soon).
+The Todo application can be deployed to AWS for production use, providing a scalable, secure, and globally distributed cloud infrastructure. The AWS deployment includes:
+
+- **Frontend Hosting**: S3 + CloudFront CDN with HTTPS
+- **Backend API**: API Gateway + Lambda functions (serverless)
+- **Data Storage**: DynamoDB (NoSQL database)
+- **Authentication**: Google OAuth 2.0 with token verification
+- **Security**: User data isolation, encrypted data at rest, HTTPS everywhere
+
+### AWS Architecture Overview
+
+```
+User Browser → CloudFront (CDN) → S3 (Frontend)
+             ↓
+             API Gateway → Lambda Functions → DynamoDB
+             ↓
+             Google OAuth 2.0 (Authentication)
+```
+
+### Quick Deployment Guide
+
+**Prerequisites:**
+- AWS account with appropriate permissions
+- AWS CLI installed and configured
+- Google OAuth Client ID (see [Google OAuth Setup](#google-oauth-setup) above)
+- Node.js 18+ and npm installed
+
+**Deployment Steps:**
+
+1. **Navigate to infrastructure directory**:
+   ```bash
+   cd infrastructure
+   ```
+
+2. **Run the deployment script**:
+   ```bash
+   ./deploy.sh -e prod -c YOUR_GOOGLE_CLIENT_ID
+   ```
+   
+   Replace `YOUR_GOOGLE_CLIENT_ID` with your Google OAuth Client ID.
+
+3. **Note the deployment outputs**:
+   - Frontend URL (CloudFront distribution)
+   - API Gateway URL
+   - DynamoDB table name
+
+4. **Update Google OAuth settings**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Navigate to your OAuth 2.0 Client ID
+   - Add the CloudFront URL to "Authorized JavaScript origins"
+   - Add the CloudFront URL to "Authorized redirect URIs"
+   - Click "Save"
+
+5. **Update frontend configuration**:
+   - Edit `frontend/config.js`
+   - Add production environment with your API Gateway URL and Google Client ID
+   - Example:
+     ```javascript
+     production: {
+       apiBaseUrl: 'https://xxxxx.execute-api.us-east-1.amazonaws.com/prod',
+       googleClientId: 'YOUR_GOOGLE_CLIENT_ID'
+     }
+     ```
+
+6. **Re-deploy frontend** (if config was updated):
+   ```bash
+   # From infrastructure directory
+   aws s3 sync ../frontend s3://YOUR_BUCKET_NAME/ \
+     --exclude "*.test.js" \
+     --exclude "*.md" \
+     --delete
+   
+   aws cloudfront create-invalidation \
+     --distribution-id YOUR_DISTRIBUTION_ID \
+     --paths "/*"
+   ```
+
+7. **Test your production deployment**:
+   - Open the CloudFront URL in your browser
+   - Sign in with Google
+   - Create, update, and delete tasks
+   - Verify data persists across browser sessions
+
+### Deployment Environments
+
+You can deploy to multiple environments (dev, staging, prod):
+
+```bash
+# Development environment
+./deploy.sh -e dev -c YOUR_DEV_CLIENT_ID
+
+# Staging environment
+./deploy.sh -e staging -c YOUR_STAGING_CLIENT_ID
+
+# Production environment
+./deploy.sh -e prod -c YOUR_PROD_CLIENT_ID
+```
+
+Each environment creates isolated AWS resources with separate:
+- S3 buckets and CloudFront distributions
+- API Gateway endpoints
+- Lambda functions
+- DynamoDB tables
+
+### Detailed Documentation
+
+For comprehensive AWS deployment documentation, including:
+- Complete prerequisites and AWS account setup
+- Infrastructure as code (CloudFormation templates)
+- Updating existing deployments
+- Rollback procedures
+- Monitoring and troubleshooting
+- Cost estimates and optimization
+- Resource cleanup
+
+**See: [infrastructure/README.md](infrastructure/README.md)**
+
+### Production Configuration
+
+After deploying to AWS, ensure your `frontend/config.js` includes all environments:
+
+```javascript
+const config = {
+  local: {
+    apiBaseUrl: 'http://localhost:3000',
+    googleClientId: 'YOUR_LOCAL_CLIENT_ID'
+  },
+  development: {
+    apiBaseUrl: 'https://xxxxx.execute-api.us-east-1.amazonaws.com/dev',
+    googleClientId: 'YOUR_DEV_CLIENT_ID'
+  },
+  staging: {
+    apiBaseUrl: 'https://xxxxx.execute-api.us-east-1.amazonaws.com/staging',
+    googleClientId: 'YOUR_STAGING_CLIENT_ID'
+  },
+  production: {
+    apiBaseUrl: 'https://xxxxx.execute-api.us-east-1.amazonaws.com/prod',
+    googleClientId: 'YOUR_PROD_CLIENT_ID'
+  }
+}
+
+// Auto-detect environment based on hostname
+const environment = window.location.hostname === 'localhost' ? 'local' :
+                   window.location.hostname.includes('staging') ? 'staging' :
+                   window.location.hostname.includes('dev') ? 'development' :
+                   'production'
+
+export default config[environment]
+```
+
+### AWS Cost Estimates
+
+**Development/Testing** (~$5-15/month):
+- Minimal traffic and data storage
+- Mostly covered by AWS Free Tier
+
+**Production** (~$10-30/month for moderate traffic):
+- 100K requests/month
+- Includes CloudFront, S3, API Gateway, Lambda, DynamoDB
+- Scales automatically with usage
+
+See [infrastructure/README.md](infrastructure/README.md) for detailed cost breakdown and optimization tips.
+
+### Security Features
+
+The AWS deployment includes:
+- ✓ HTTPS/SSL encryption for all communications
+- ✓ Google OAuth token verification on every API request
+- ✓ User data isolation (users can only access their own tasks)
+- ✓ DynamoDB encryption at rest
+- ✓ IAM roles with least-privilege permissions
+- ✓ CloudWatch logging for monitoring and auditing
+- ✓ CORS configuration for secure cross-origin requests
+
+### Monitoring and Maintenance
+
+After deployment, you can monitor your application using:
+
+**CloudWatch Logs**:
+```bash
+# View Lambda function logs
+aws logs tail /aws/lambda/getTasks-prod --follow
+```
+
+**CloudWatch Metrics**:
+- API request counts
+- Lambda invocations and errors
+- DynamoDB read/write capacity
+- CloudFront cache hit rates
+
+**Cost Monitoring**:
+```bash
+# View current month costs
+aws ce get-cost-and-usage \
+  --time-period Start=2024-01-01,End=2024-01-31 \
+  --granularity MONTHLY \
+  --metrics BlendedCost
+```
+
+### Troubleshooting AWS Deployment
+
+**Common Issues:**
+
+1. **"Access Denied" errors**: Check IAM permissions for CloudFormation, Lambda, S3, etc.
+2. **CORS errors**: Verify API Gateway CORS configuration and Lambda response headers
+3. **Authentication failures**: Ensure Google Client ID matches in Lambda environment variables
+4. **CloudFront not updating**: Invalidate the cache after deploying frontend changes
+
+See [infrastructure/README.md](infrastructure/README.md) for detailed troubleshooting guide.
+
+### Cleanup
+
+To remove all AWS resources and avoid ongoing charges:
+
+```bash
+# Delete the CloudFormation stack
+aws cloudformation delete-stack --stack-name todo-app-prod
+
+# Manually empty and delete S3 bucket if needed
+aws s3 rm s3://your-bucket-name --recursive
+aws s3 rb s3://your-bucket-name
+```
+
+---
 
 Enjoy your new To-Do app!

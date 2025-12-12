@@ -10,18 +10,18 @@ const config = {
     environment: 'local'
   },
   development: {
-    apiBaseUrl: 'https://api-dev.yourdomain.com',
-    googleClientId: 'YOUR_DEV_GOOGLE_CLIENT_ID',
+    apiBaseUrl: 'https://6hgehxlobc.execute-api.us-east-1.amazonaws.com/dev', // Will be replaced by deployment script
+    googleClientId: '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', // Will be replaced by deployment script
     environment: 'development'
   },
   staging: {
-    apiBaseUrl: 'https://api-staging.yourdomain.com',
-    googleClientId: 'YOUR_STAGING_GOOGLE_CLIENT_ID',
+    apiBaseUrl: 'https://6hgehxlobc.execute-api.us-east-1.amazonaws.com/dev', // Will be replaced by deployment script
+    googleClientId: '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', // Will be replaced by deployment script
     environment: 'staging'
   },
   production: {
-    apiBaseUrl: 'https://api.yourdomain.com',
-    googleClientId: 'YOUR_PROD_GOOGLE_CLIENT_ID',
+    apiBaseUrl: 'https://6hgehxlobc.execute-api.us-east-1.amazonaws.com/dev', // Will be replaced by deployment script
+    googleClientId: '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', // Will be replaced by deployment script
     environment: 'production'
   }
 };
@@ -61,6 +61,10 @@ function getConfig() {
   return config[environment];
 }
 
-// Export for ES6 modules
-export default getConfig();
-export { getConfig, detectEnvironment, config };
+// Make configuration available globally for the app
+if (typeof window !== 'undefined') {
+  window.APP_CONFIG = getConfig();
+  window.getConfig = getConfig;
+  window.detectEnvironment = detectEnvironment;
+  window.config = config;
+}

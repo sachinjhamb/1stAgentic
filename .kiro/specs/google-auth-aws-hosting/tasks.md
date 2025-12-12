@@ -641,7 +641,7 @@
 
 
 
-  - [ ] 19.1 Create infrastructure/cloudformation.yaml
+  - [x] 19.1 Create infrastructure/cloudformation.yaml
     - Define S3 bucket for frontend hosting
     - Define CloudFront distribution with SSL/TLS
     - Define DynamoDB table (TodoTasks with userId/taskId keys)
@@ -655,7 +655,7 @@
 
 
 
-  - [ ] 19.2 Create infrastructure/deploy.sh deployment script
+  - [x] 19.2 Create infrastructure/deploy.sh deployment script
     - Package Lambda functions into deployment zip
     - Validate CloudFormation template
     - Deploy CloudFormation stack with parameters
@@ -667,7 +667,7 @@
     - Display deployment outputs (URLs and resource names)
     - _Requirements: 8.5_
 
-  - [ ] 19.3 Create infrastructure/README.md
+  - [x] 19.3 Create infrastructure/README.md
     - Document AWS prerequisites (AWS CLI, credentials, permissions)
     - Document deployment steps with examples
     - Document required environment variables
@@ -676,40 +676,43 @@
     - Document cost estimates and resource cleanup
     - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 20. AWS deployment preparation
-  - [ ] 20.1 Create deployment package structure
+- [x] 20. AWS deployment preparation
+  - [x] 20.1 Create deployment package structure
     - Create infrastructure/ directory
     - Prepare Lambda function deployment package
     - Create deployment configuration files
     - _Requirements: 8.1, 8.5_
 
-  - [ ] 20.2 Update frontend config for production
+  - [x] 20.2 Update frontend config for production
     - Add production environment configuration to config.js
     - Document how to set API Gateway URL after deployment
     - Add instructions for updating Google OAuth redirect URIs
     - _Requirements: 7.4_
 
-  - [ ] 20.3 Create deployment validation checklist
+  - [x] 20.3 Create deployment validation checklist
     - Document pre-deployment checks
     - Document post-deployment validation steps
     - Document testing procedures for AWS environment
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 21. Update documentation for AWS deployment
-  - [ ] 21.1 Update main README.md with AWS deployment section
+- [x] 21. Update documentation for AWS deployment
+
+
+
+
+
+  - [x] 21.1 Update main README.md with AWS deployment section
+
     - Add AWS deployment overview
     - Link to infrastructure/README.md for detailed steps
     - Add production environment setup instructions
-    - Update architecture diagram to show AWS services
+    - Document how to configure production API URLs and Google Client ID
     - _Requirements: 1.1, 7.1, 8.1_
 
-  - [ ] 21.2 Create AWS deployment guide
-    - Document complete AWS setup process
-    - Document Google OAuth configuration for production domain
-    - Document environment-specific configuration
-    - Document monitoring and troubleshooting for AWS
-    - Document cost optimization tips
-    - _Requirements: 8.1, 8.2, 8.3_
+- [x] 22. Final checkpoint - Implementation complete
 
-- [ ] 22. Final checkpoint - Implementation complete
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.

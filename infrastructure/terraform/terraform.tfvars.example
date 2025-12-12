@@ -1,0 +1,14 @@
+# Example Terraform Variables File
+# Copy this to terraform.tfvars and update with your values
+
+# Required Variables
+environment       = "dev"
+google_client_id  = "YOUR_GOOGLE_CLIENT_ID_HERE"
+
+# Optional Variables (uncomment to override defaults)
+# aws_region                    = "us-east-1"
+# lambda_zip_path              = "../lambda-functions.zip"
+# frontend_path                = "../../frontend"
+# cloudwatch_log_retention_days = 14
+# lambda_timeout               = 30
+# lambda_memory_size           = 256
