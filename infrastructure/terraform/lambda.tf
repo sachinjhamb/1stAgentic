@@ -4,9 +4,9 @@
 data "archive_file" "lambda_placeholder" {
   type        = "zip"
   output_path = "${path.module}/lambda-placeholder.zip"
-  
+
   source {
-    content = <<EOF
+    content  = <<EOF
 exports.handler = async (event) => {
   return {
     statusCode: 200,
@@ -27,11 +27,11 @@ resource "aws_lambda_function" "functions" {
   for_each = local.lambda_functions
 
   function_name = "${each.key}-${var.environment}"
-  role         = aws_iam_role.lambda_execution.arn
-  handler      = each.value
-  runtime      = "nodejs18.x"
-  timeout      = var.lambda_timeout
-  memory_size  = var.lambda_memory_size
+  role          = aws_iam_role.lambda_execution.arn
+  handler       = each.value
+  runtime       = "nodejs18.x"
+  timeout       = var.lambda_timeout
+  memory_size   = var.lambda_memory_size
 
   # Use actual zip file if it exists, otherwise use placeholder
   filename         = fileexists(var.lambda_zip_path) ? var.lambda_zip_path : data.archive_file.lambda_placeholder.output_path
@@ -39,9 +39,9 @@ resource "aws_lambda_function" "functions" {
 
   environment {
     variables = {
-      GOOGLE_CLIENT_ID     = var.google_client_id
-      DYNAMODB_TABLE_NAME  = aws_dynamodb_table.todo_tasks.name
-      ENVIRONMENT          = var.environment
+      GOOGLE_CLIENT_ID    = var.google_client_id
+      DYNAMODB_TABLE_NAME = aws_dynamodb_table.todo_tasks.name
+      ENVIRONMENT         = var.environment
     }
   }
 

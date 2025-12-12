@@ -100,8 +100,8 @@ resource "aws_api_gateway_integration" "integrations" {
   http_method = aws_api_gateway_method.methods[each.key].http_method
 
   integration_http_method = "POST"
-  type                   = "AWS_PROXY"
-  uri                    = aws_lambda_function.functions[each.value.function_name].invoke_arn
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.functions[each.value.function_name].invoke_arn
 }
 
 # API Gateway Method Responses
@@ -186,7 +186,6 @@ resource "aws_api_gateway_deployment" "deployment" {
   ]
 
   rest_api_id = aws_api_gateway_rest_api.todo_api.id
-  stage_name  = var.environment
 
   # Force redeployment when configuration changes
   triggers = {
@@ -200,6 +199,15 @@ resource "aws_api_gateway_deployment" "deployment" {
   lifecycle {
     create_before_destroy = true
   }
+}
+
+# API Gateway Stage
+resource "aws_api_gateway_stage" "stage" {
+  deployment_id = aws_api_gateway_deployment.deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.todo_api.id
+  stage_name    = var.environment
+
+  tags = local.common_tags
 }
 
 # Lambda Permissions for API Gateway

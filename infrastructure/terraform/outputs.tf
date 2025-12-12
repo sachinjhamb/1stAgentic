@@ -47,10 +47,10 @@ output "api_gateway_id" {
 output "deployment_info" {
   description = "Deployment information"
   value = {
-    environment    = var.environment
-    region        = local.region
-    account_id    = local.account_id
-    frontend_url  = "https://${aws_cloudfront_distribution.frontend.domain_name}"
-    api_url       = "https://${aws_api_gateway_rest_api.todo_api.id}.execute-api.${local.region}.amazonaws.com/${var.environment}"
+    environment  = var.environment
+    region       = local.region
+    account_id   = local.account_id
+    frontend_url = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+    api_url      = "https://${aws_api_gateway_rest_api.todo_api.id}.execute-api.${local.region}.amazonaws.com/${var.environment}"
   }
 }
